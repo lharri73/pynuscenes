@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from pathlib import Path
+# from pathlib import Path
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
@@ -80,7 +80,7 @@ class NuscenesIMDB(object):
         self.id_length = 8
 
     ##--------------------------------------------------------------------------
-    def generate_imdb(self):
+    def generate_imdb(self) -> None:
         """
         Create an image databaser (imdb) for the NuScnenes dataset and save it
         to a pickle file
@@ -109,55 +109,51 @@ class NuscenesIMDB(object):
             with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
                 pickle.dump(self.imdb['val'], f)
 
-
     ##--------------------------------------------------------------------------
-    def _split_scenes(self):
+    def _split_scenes(self) -> None:
         """
         Split scenes into train, val and test scenes
         """
-        scene_split_mapping = splits.create_splits_scenes()
+        scene_split_names = splits.create_splits_scenes()
 
-        if self.nusc_version == "v1.0-trainval" or self.nusc_version == "trainval":
-            train_scenes = scene_split_mapping['train']
-            val_scenes = scene_split_mapping['val']
-            test_scenes = []
+        self.train_scenes = []
+        self.test_scenes = []
+        self.val_scenes = []
 
-        elif self.nusc_version == "v1.0-test" or self.nusc_version == "test":
-            train_scenes = []
-            val_scenes = []
-            test_scenes = scene_split_mapping['test']
+        for scene in self.nusc.scene:
+            #NOTE: mini train and mini val are subsets of train and val
+            if scene['name'] in scene_split_names['train']:
+                self.train_scenes.append(scene['token'])
+            elif scene['name'] in scene_split_names['val']:
+                self.val_scenes.append(scene['token'])
+            elif scene['name'] in scene_split_names['test']:
+                self.test_scenes.append(scene['token'])
+            else:
+                raise Exception('scene not in splits...split table may not be complete')
 
-        elif self.nusc_version == "v1.0-mini" or self.nusc_version == "mini":
-            train_scenes = scene_split_mapping['mini_train']
-            val_scenes = scene_split_mapping['mini_val']
-            test_scenes = []
-
-        else:
-            raise ValueError("Unknown NuScenes version " + self.nusc_version)
         if self.is_test:
-            self.logger.info('test: {} scenes'.format(str(len(test_scenes))))
+            self.logger.info('test: {} scenes'.format(str(len(self.test_scenes))))
         else:
-            self.logger.info('train: {} scenes, val: {} scenes'.format(str(len(train_scenes)), str(len(val_scenes))))
-
-        self.train_scenes = train_scenes
-        self.val_scenes = val_scenes
-        self.test_scenes = test_scenes
+            self.logger.info('train: {} scenes, val: {} scenes'.format(str(len(self.train_scenes)), str(len(self.val_scenes))))
 
     ##------------------------------------------------------------------------------
-    def _get_frames(self):
+    def _get_frames(self) -> list:
         """
         returns (train_nusc_frames, val_nusc_frames) from the nuscenes dataset
         """
         self.sample_id = 0
 
+        self.logger.info('Generating train frames')
         train_nusc_frames = []
         for scene in tqdm(self.train_scenes, desc="train scenes", position=0):
             train_nusc_frames = train_nusc_frames + self.process_scene_samples(scene)
 
+        self.logger.info('Generating val frames')
         val_nusc_frames = []
         for scene in tqdm(self.val_scenes, desc="val scenes", position=0):
             val_nusc_frames = val_nusc_frames + self.process_scene_samples(scene)
 
+        self.logger.info('Generating test frames')
         test_nusc_frames = []
         for scene in tqdm(self.test_scenes, desc="test scenes", position=0):
             test_nusc_frames = test_nusc_frames + self.process_scene_samples(scene)
@@ -166,23 +162,20 @@ class NuscenesIMDB(object):
 
 
     ##--------------------------------------------------------------------------
-    def process_scene_samples(self, scene) -> [{}]:
+    def process_scene_samples(self, scene: str) -> list:
         """
             Get sensor data and annotations for all samples in the scene.
-            Returns a list of dictionaries
+            :param scene: scene token
+            return samples: a list of dictionaries
             frame (a dictionary with a sample, sweeps)
         """
-
-
-        scene_number = scene['name'][-4:]
-        scene_token = scene["token"]
-        scene_rec = self.nusc.get('scene', scene_token)
+        scene_rec = self.nusc.get('scene', scene)
+        scene_number = scene_rec['name'][-4:]
+        self.logger.debug('Processing scene {}'.format(scene_number))
 
         ## Create progress bar
-        num_samples = scene['nbr_samples']
+        num_samples = scene_rec['nbr_samples']
         tqdm_position = 1
-        pbar = tqdm(total=num_samples, desc='scene {}'.format(scene_number), position=(tqdm_position))
-
         ## Get the first sample token in the scene
         sample_rec = self.nusc.get('sample', scene_rec['first_sample_token'])
         sample_sensor_records = {x: self.nusc.get('sample_data',
@@ -193,12 +186,12 @@ class NuscenesIMDB(object):
         has_more_samples = True
         while has_more_samples:
             sample = {}
-            #   sample = {
-            #               CAM_FRONT_LEFT: token
-            #               CAM_FRONT_RIGHT: token
-            #               ...
-            #               RADAR_BACK_RIGHT: token
-            #             }
+            # sample = {
+            #           CAM_FRONT_LEFT: token
+            #           CAM_FRONT_RIGHT: token
+            #           ...
+            #           RADAR_BACK_RIGHT: token
+            #          }
             sample.update({cam: sample_sensor_records[cam]['token'] for cam in self.CAMS})
             sample.update({'LIDAR_TOP': sample_sensor_records['LIDAR_TOP']['token']})
             sample.update({x: sample_sensor_records[x]['token'] for x in self.RADARS})
@@ -207,7 +200,6 @@ class NuscenesIMDB(object):
                      'sweeps': self._get_sweeps(sample_sensor_records),
                      "id": str(self.sample_id).zfill(self.id_length)}
             self.sample_id += 1
-            pbar.update(1)
 
             ## Get the next sample if it exists
             if sample_rec['next'] == "":
@@ -217,26 +209,15 @@ class NuscenesIMDB(object):
                 sample_sensor_records = {x: self.nusc.get('sample_data',
                     sample_rec['data'][x]) for x in self.SENSOR_NAMES}
 
-        pbar.close()
         return returnList
 
-
     ##------------------------------------------------------------------------------
-    def _get_previous_sensor_sweeps(self, sample_data, num_sweeps) -> [str]: # list of tokens
-        sweeps = []
-        while len(sweeps) < num_sweeps:
-            if not sample_data['prev'] == "":
-                sweeps.append(sample_data['prev'])
-                sample_data = self.nusc.get('sample_data', sample_data['prev'])
-            else:
-                break
-        return sweeps
-
-
-    ##------------------------------------------------------------------------------
-    def _get_sweeps(self, sweep_sensor_records):
+    def _get_sweeps(self, sweep_sensor_records) -> dict:
         """
+            :param sweep_sensor_records: list of sample data records for the sensors to return sweeps for
             returns dictionary of lists
+                key is the sensor name
+                value is the list sweep tokens
         """
         sweep = {x: '' for x in self.SENSOR_NAMES}
         lidar_sweeps = self._get_previous_sensor_sweeps(sweep_sensor_records['LIDAR_TOP'], self.max_lidar_sweeps)
@@ -257,133 +238,31 @@ class NuscenesIMDB(object):
 
         return sweep
 
-
     ##------------------------------------------------------------------------------
-    def _get_available_scenes(self):
-        available_scenes = []
-
-        for scene in self.nusc.scene:
-            scene_token = scene["token"]
-            scene_rec = self.nusc.get('scene', scene_token)
-            sample_rec = self.nusc.get('sample', scene_rec['first_sample_token'])
-            sd_rec = self.nusc.get('sample_data', sample_rec['data']["LIDAR_TOP"])
-            has_more_frames = True
-            scene_not_exist = False
-            while has_more_frames:
-                lidar_path, boxes, _ = self.nusc.get_sample_data(sd_rec['token'])
-                if not Path(lidar_path).exists():
-                    scene_not_exist = True
-                    break
-                else:
-                    break
-
-                ##FIXME: Do we ever get to this point?
-                if not sd_rec['next'] == "":
-                    sd_rec = self.nusc.get('sample_data', sd_rec['next'])
-                else:
-                    has_more_frames = False
-            if scene_not_exist:
-                continue
-            available_scenes.append(scene)
-        print("existing scenes number:", len(available_scenes))
-        return available_scenes
-
-    ##--------------------------------------------------------------------------
-    def process_scene_sweeps(self, scene):
+    def _get_previous_sensor_sweeps(self, sample_data, num_sweeps) -> list: 
         """
-            Get sensor data and annotations for all sweeps in the scene. Sweeps
-            are data from sensors with no annotation. The annotation is calculated
-            using interpolation from closest samples.
-            Returns a list of dictionaries, the key is if its a train or val, and the key is a
-            frame (a dictionary with a sample, sweeps, and whether it's a test scene or not)
+            Gets the previous sweeps for one senser
+            :param sample_data: sample_data dictionary for the sensor
+            :param num_sweeps: number of sweeps to return
         """
-        ##TODO: Test this function then uncomment and remvove NotImplementedError
-        raise NotImplementedError("unable to create imdb with sweeps")
-
-        # train_nusc_frames = []
-        # val_nusc_frames = []
-        # returnList = []
-        # counter = scene['start_counter']
-
-        # scene_number = scene['name'][-4:]
-        # scene_token = scene["token"]
-        # scene_rec = self.nusc.get('scene', scene_token)
-        # sample_rec = self.nusc.get('sample', scene_rec['first_sample_token'])
-
-        # ## Create progress bar
-        # num_sweeps = round((scene['nbr_samples'])* 5.6 * len(self.CAMS_TO_RADARS.keys()))
-        # tqdm_position = multiprocessing.current_process()._identity[0]
-        # pbar = tqdm(total=num_sweeps, desc='scene {}'.format(scene_number), position=(tqdm_position))
-
-        # ## Loop over all cameras in the scene
-        # for cam in self.CAMS_TO_RADARS.keys():
-        #     sweep_sensor_records = {x: self.nusc.get('sample_data',
-        #         sample_rec['data'][x]) for x in self.SENSOR_NAMES}
-        #     sweep_sensor_tokens = {x: sweep_sensor_records[x]['token']
-        #         for x in self.SENSOR_NAMES}
-        #     has_more_sweeps = True
-
-        #     ## Get all sensor sweeps
-        #     while has_more_sweeps:
-        #         counter += 1
-
-        #         lidar_path, boxes, _ = self.nusc.get_sample_data(
-        #             sweep_sensor_records['LIDAR_TOP']['token'])
-        #         CAM_sample_data = sweep_sensor_records[cam]
-        #         cam_path, _, cam_intrinsic = self.nusc.get_sample_data(
-        #             CAM_sample_data['token'])
-
-        #         radar_paths = []
-        #         for radar in self.CAMS_TO_RADARS[cam]:
-        #             RADAR_sample_data = sweep_sensor_records[radar]
-        #             radar_path = self.nusc.get_sample_data_path(RADAR_sample_data['token'])
-        #             radar_paths.append(radar_path)
-
-        #         _id = self.start_counter + int(scene_number)*(10**5) + self.CAM_ID[cam]*(10**4) + counter
-
-        #         sample = {
-        #             'cam_token': sweep_sensor_tokens[cam],
-        #             'lidar_token': sweep_sensor_tokens['LIDAR_TOP'],
-        #             'radar_tokens': [sweep_sensor_tokens[x] for x in self.CAMS_TO_RADARS[cam]]
-        #             }
-
-        #         frame = {
-        #                 'sample': sample,
-        #                 'sweeps': self._get_sweeps(sweep_sensor_records),
-        #                 'is_test': self.is_test,
-        #                 "id": _id
-        #                 }
-
-        #         if scene_token in self.train_scenes:
-        #             returnList.append({'type': 'trainScene', 'frame': frame})
-        #         else:
-        #             returnList.append({'type': 'valScene', 'frame': frame})
-        #         pbar.update(1)
-
-        #         ## Go to the next sample
-        #         if sweep_sensor_records[cam]['next'] == "" or sweep_sensor_records['LIDAR_TOP']['next'] == "":
-        #             has_more_sweeps = False
-        #         else:
-        #             for sensor in self.SENSOR_NAMES:
-        #                 if not sweep_sensor_records[sensor] == {} and not sweep_sensor_records[sensor]['next'] == "":
-        #                     next_token = sweep_sensor_records[sensor]['next']
-        #                     sweep_sensor_tokens[sensor] = next_token
-        #                     sweep_sensor_records[sensor]= self.nusc.get('sample_data', next_token)
-        #                 else:
-        #                     sweep_sensor_records[sensor] = {}
-
-        # pbar.close()
-        # return returnList
-
+        sweeps = []
+        while len(sweeps) < num_sweeps:
+            if not sample_data['prev'] == "":
+                sweeps.append(sample_data['prev'])
+                sample_data = self.nusc.get('sample_data', sample_data['prev'])
+            else:
+                break
+        return sweeps
 
 ################################################################################
 def test_imdb():
-    nuscenes_path = '/home/cavs/wad-challenge/data/datasets/nuscenes'
+    nuscenes_path = '/home/cavs/datasets/nuscenes'
     nuscenes_version = "v1.0-mini"
 
     imdb = NuscenesIMDB(nuscenes_path, nusc_version=nuscenes_version)
-    with open(os.path.join(nuscenes_path, "%s_imdb_train.pkl" % str(imdb.short_version)), 'rb') as f:
-        data = pickle.load(f)
+    imdb.generate_imdb()
+    # with open(os.path.join(nuscenes_path, "%s_imdb_train.pkl" % str(imdb.short_version)), 'rb') as f:
+    #     data = pickle.load(f)
 
 
 if __name__ == "__main__":

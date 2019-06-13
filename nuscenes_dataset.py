@@ -5,7 +5,7 @@ import io
 import cv2
 
 from PIL import Image
-from pathlib import Path
+# from pathlib import Path
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from datasets.nuscenes_imdb import NuscenesIMDB
