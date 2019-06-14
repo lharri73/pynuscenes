@@ -1,3 +1,10 @@
+################################################################################
+## Date Created  : Fri Jun 14 2019                                            ##
+## Authors       : Landon Harris, Ramin Nabati                                ##
+## Last Modified : Fri Jun 14 2019                                            ##
+## Copyright (c) 2019                                                         ##
+################################################################################
+
 from tqdm import tqdm
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
@@ -16,10 +23,11 @@ class NuscenesDB(object):
     """
     Token database for the nuscenes dataset
     """
-
+    
     def __init__(self,
-                 root_path,
+                 nusc_root,
                  nusc_version,
+                 split,
                  max_cam_sweeps=6,
                  max_lidar_sweeps=10,
                  max_radar_sweeps=6,
@@ -34,9 +42,29 @@ class NuscenesDB(object):
         :param verbose: show debug information
         """
 
+        self.nusc_root = nusc_root
+        self.nusc_version = nusc_version
+        self.split = split
+        self.max_cam_sweeps = max_cam_sweeps
+        self.max_lidar_sweeps = max_lidar_sweeps
+        self.max_radar_sweeps = max_radar_sweeps
+        self.id_length = 8
+        self.db = {}
+        
+        assert nusc_version in constants.NUSCENES_SPLITS.keys(), \
+            "Nuscenes version not valid."
+        assert split in constants.NUSCENES_SPLITS[nusc_version], \
+            "Nuscenes split is not valid for {}".format(nusc_version)
+
+        self.logger = self._set_logger(verbose)
+        self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=True)
+        self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
+
+    ##--------------------------------------------------------------------------
+    def _set_logger(self, verbose):
         ## Set up logger
-        self.logger = logging.getLogger('pynuscenes')
-        self.logger.setLevel(logging.DEBUG)
+        logger = logging.getLogger('pynuscenes')
+        logger.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         if verbose:
             ch.setLevel(logging.DEBUG)
@@ -44,107 +72,63 @@ class NuscenesDB(object):
             ch.setLevel(logging.INFO)
         formatter = logging.Formatter('%(filename)s:%(lineno)d %(levelname)s:: %(message)s')
         ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
-
-        self.available_vers = ["v1.0-trainval", "v1.0-test", "v1.0-mini"]
-        assert nusc_version in self.available_vers
-        self.short_version = str(nusc_version.split('-')[1])
-        self.root_path = root_path
-        self.nusc_root = os.path.join(root_path, 'datasets', 'nuscenes')
-        self.nusc_version = nusc_version
-        os.makedirs(os.path.join(self.root_path, 'database', self.nusc_version), exist_ok=True)
-        self.max_cam_sweeps = max_cam_sweeps
-        self.max_lidar_sweeps = max_lidar_sweeps
-        self.max_radar_sweeps = max_radar_sweeps
-        self.db = {}
-        self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=True)
-        self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
-        self.id_length = 8
+        logger.addHandler(ch)
+        return logger
 
     ##--------------------------------------------------------------------------
-    def generate_db(self) -> None:
+    def generate_db(self, out_dir=None) -> None:
         """
         Create an image databaser (db) for the NuScnenes dataset and save it
         to a pickle file
         """
         self.logger.info('Creating db for the NuScenes dataset ...')
-        self._split_scenes()
-        train_nusc_frames, val_nusc_frames, test_nusc_frames = self._get_frames()
+        scenes_list = self._split_scenes()
+        frames = self._get_frames(scenes_list)
         metadata = {"version": self.nusc_version}
-
-        if self.nusc_version == 'v1.0-test':
-            self.logger.info('Test sample length: {}'.format(str(len(test_nusc_frames))))
-            self.db['test'] = {"frames": test_nusc_frames, "metadata": metadata}
-            db_filename = "test_db.pkl"
+        self.db = {
+                    'frames': frames,
+                    'metadata': metadata
+                    }
+        ## if an output directory is specified, write to a pkl file
+        if out_dir is not None:
+            self.logger.info('Number of samples: {}'.format(str(len(test_nusc_frames))))
             self.logger.info('Writing pickle file at {}'.format(db_filename))
-            with open(os.path.join(self.root_path, 'database', self.nusc_version \
-                ,db_filename), 'wb') as f:
+            
+            out_dir = os.path.join(out_dir, self.nusc_version)
+            os.mkdirs(out_dir, exist_ok=True)
+            db_filename = "{}_db.pkl".format(self.split)
+            with open(os.path.join(out_dir, db_filename), 'wb') as f:
                 pickle.dump(self.db['test'], f)
 
-        else:
-            self.logger.info('Train sample length: {}, val sample length: {}'.format(str(len(train_nusc_frames)), str(len(val_nusc_frames))))
-            self.db['train'] = {"frames": train_nusc_frames, "metadata": metadata}
-            db_filename = "train_db.pkl"
-            with open(os.path.join(self.root_path, 'database', self.nusc_version, db_filename), 'wb') as f:
-                pickle.dump(self.db['train'], f)
-
-            self.db['val'] = {"frames": val_nusc_frames, "metadata": metadata}
-            db_filename = "val_db.pkl"
-            self.logger.info('Writing pickle file at {}'.format(db_filename))
-            with open(os.path.join(self.root_path, 'database', self.nusc_version, db_filename), 'wb') as f:
-                pickle.dump(self.db['val'], f)
-
+            
     ##--------------------------------------------------------------------------
     def _split_scenes(self) -> None:
         """
         Split scenes into train, val and test scenes
         """
         scene_split_names = splits.create_splits_scenes()
-
-        self.train_scenes = []
-        self.test_scenes = []
-        self.val_scenes = []
-
+        scenes_list = []        
         for scene in self.nusc.scene:
             #NOTE: mini train and mini val are subsets of train and val
-            if scene['name'] in scene_split_names['train']:
-                self.train_scenes.append(scene['token'])
-            elif scene['name'] in scene_split_names['val']:
-                self.val_scenes.append(scene['token'])
-            elif scene['name'] in scene_split_names['test']:
-                self.test_scenes.append(scene['token'])
-            else:
-                raise Exception('scene not in splits...split table may not be complete')
+            if scene['name'] in scene_split_names[self.split]:
+                scenes_list.append(scene['token'])
 
-        if self.nusc_version == 'v1.0-test':
-            self.logger.info('test: {} scenes'.format(str(len(self.test_scenes))))
-        else:
-            self.logger.info('train: {} scenes, val: {} scenes'.format(str(len(self.train_scenes)), str(len(self.val_scenes))))
+        self.logger.info('{}: {} scenes'.format(self.nusc_version, str(len(scenes_list))))
 
+        return scenes_list
     ##------------------------------------------------------------------------------
-    def _get_frames(self) -> list:
+    def _get_frames(self, scenes_list) -> list:
         """
         returns (train_nusc_frames, val_nusc_frames) from the nuscenes dataset
         """
         self.sample_id = 0
 
         self.logger.debug('Generating train frames')
-        train_nusc_frames = []
-        for scene in tqdm(self.train_scenes, desc="train scenes", position=0):
-            train_nusc_frames = train_nusc_frames + self.process_scene_samples(scene)
+        frames = []
+        for scene in tqdm(scenes_list, desc="scenes", position=0):
+            frames = frames + self.process_scene_samples(scene)
 
-        self.logger.debug('Generating val frames')
-        val_nusc_frames = []
-        for scene in tqdm(self.val_scenes, desc="val scenes", position=0):
-            val_nusc_frames = val_nusc_frames + self.process_scene_samples(scene)
-
-        self.logger.info('Generating test frames')
-        test_nusc_frames = []
-        for scene in tqdm(self.test_scenes, desc="test scenes", position=0):
-            test_nusc_frames = test_nusc_frames + self.process_scene_samples(scene)
-
-        return train_nusc_frames, val_nusc_frames, test_nusc_frames
-
+        return frames
 
     ##--------------------------------------------------------------------------
     def process_scene_samples(self, scene: str) -> list:
@@ -183,7 +167,7 @@ class NuscenesDB(object):
 
             frame = {'sample': sample,
                      'sweeps': self._get_sweeps(sample_sensor_records),
-                     "id": str(self.sample_id).zfill(self.id_length)}
+                     'id': str(self.sample_id).zfill(self.id_length)}
             self.sample_id += 1
 
             ## Get the next sample if it exists
@@ -193,7 +177,7 @@ class NuscenesDB(object):
                 sample_rec = self.nusc.get('sample', sample_rec['next'])
                 sample_sensor_records = {x: self.nusc.get('sample_data',
                     sample_rec['data'][x]) for x in self.SENSOR_NAMES}
-            returnList.append(sample)
+            returnList.append(frame)
         return returnList
 
     ##------------------------------------------------------------------------------

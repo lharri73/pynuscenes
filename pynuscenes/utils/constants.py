@@ -1,3 +1,15 @@
+################################################################################
+## Date Created  : Fri Jun 14 2019                                            ##
+## Authors       : Landon Harris, Ramin Nabati                                ##
+## Last Modified : Fri Jun 14 2019                                            ##
+## Copyright (c) 2019                                                         ##
+################################################################################
+
+NUSCENES_SPLITS = {
+                    'v1.0-trainval': ['train', 'val'],
+                    'v1.0-mini': ['mini_train', 'mini_val'],
+                    'v1.0-test': ['test']
+                  }
 
 CAMERAS = {'CAM_FRONT_LEFT':  0,
            'CAM_FRONT_RIGHT': 1,
