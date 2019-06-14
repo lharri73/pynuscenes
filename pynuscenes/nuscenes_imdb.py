@@ -61,7 +61,7 @@ class NuscenesIMDB(object):
             ch.setLevel(logging.DEBUG)
         else:
             ch.setLevel(logging.WARNING)
-        formatter = logging.Formatter('%(pathname)s:%(lineno)d %(levelname)s:: %(message)s')
+        formatter = logging.Formatter('%(filename)s:%(lineno)d %(levelname)s:: %(message)s')
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
 
@@ -85,20 +85,21 @@ class NuscenesIMDB(object):
         Create an image databaser (imdb) for the NuScnenes dataset and save it
         to a pickle file
         """
-        self.logger.info('creating imdb for the NuScenes dataset ...')
+        self.logger.info('Creating imdb for the NuScenes dataset ...')
         self._split_scenes()
         train_nusc_frames, val_nusc_frames, test_nusc_frames = self._get_frames()
         metadata = {"version": self.nusc_version}
 
         if self.is_test:
-            self.logger.info('test sample length: {}'.format(str(len(test_nusc_frames))))
+            self.logger.info('Test sample length: {}'.format(str(len(test_nusc_frames))))
             self.imdb['test'] = {"frames": test_nusc_frames, "metadata": metadata}
             imdb_filename = "{}_imdb_test.pkl".format(self.short_version)
+            self.logger.info('Writing pickle file at {}'.format(imdb_filename))
             with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
                 pickle.dump(self.imdb['test'], f)
 
         else:
-            self.logger.info('train sample length: {}, val sample length: {}'.format(str(len(train_nusc_frames)), str(len(val_nusc_frames))))
+            self.logger.info('Train sample length: {}, val sample length: {}'.format(str(len(train_nusc_frames)), str(len(val_nusc_frames))))
             self.imdb['train'] = {"frames": train_nusc_frames, "metadata": metadata}
             imdb_filename = "{}_imdb_train.pkl".format(self.short_version)
             with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
@@ -106,6 +107,7 @@ class NuscenesIMDB(object):
 
             self.imdb['val'] = {"frames": val_nusc_frames, "metadata": metadata}
             imdb_filename = "{}_imdb_val.pkl".format(self.short_version)
+            self.logger.info('Writing pickle file at {}'.format(imdb_filename))
             with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
                 pickle.dump(self.imdb['val'], f)
 
@@ -208,7 +210,7 @@ class NuscenesIMDB(object):
                 sample_rec = self.nusc.get('sample', sample_rec['next'])
                 sample_sensor_records = {x: self.nusc.get('sample_data',
                     sample_rec['data'][x]) for x in self.SENSOR_NAMES}
-
+            returnList.append(sample)
         return returnList
 
     ##------------------------------------------------------------------------------
@@ -255,14 +257,7 @@ class NuscenesIMDB(object):
         return sweeps
 
 ################################################################################
-def test_imdb():
-    nuscenes_path = '/home/cavs/datasets/nuscenes'
-    nuscenes_version = "v1.0-mini"
 
-    imdb = NuscenesIMDB(nuscenes_path, nusc_version=nuscenes_version)
-    imdb.generate_imdb()
-    # with open(os.path.join(nuscenes_path, "%s_imdb_train.pkl" % str(imdb.short_version)), 'rb') as f:
-    #     data = pickle.load(f)
 
 
 if __name__ == "__main__":

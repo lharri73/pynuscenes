@@ -1,18 +1,16 @@
+import io
 import os
 import pickle
-import numpy as np
-import io
+
 import cv2
-
-from PIL import Image
-# from pathlib import Path
-from pyquaternion import Quaternion
+import numpy as np
 from nuscenes.nuscenes import NuScenes
-from datasets.nuscenes_imdb import NuscenesIMDB
-# from utils.visualize import visualize_frame_data
-import utils.visualize as vis
-from nuscenes.utils.data_classes import RadarPointCloud, LidarPointCloud, Box
+from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud
+from PIL import Image
+from pyquaternion import Quaternion
 
+import utils.visualize as vis
+from datasets.nuscenes_imdb import NuscenesIMDB
 
 class NuscenesDataset(NuscenesIMDB):
     
@@ -260,63 +258,6 @@ class NuscenesDataset(NuscenesIMDB):
         image = np.array(Image.open(io.BytesIO(image_str)))
         return image, cam_intrinsics
 
-    ##--------------------------------------------------------------------------
-    # def _get_sweeps_data(self, frame, return_global):
-    #     box_list = []
-    #     lidar_pc_sweeps = []
-
-    #     for lidar_token in frame['sweeps']['LIDAR_TOP']:
-    #         pose_rec = self.nusc.get('ego_pose', self.nusc.get('sample_data', lidar_token)['ego_pose_token'])
-    #         lidar_path = self.nusc.get_sample_data_path(lidar_token)
-    #         lidar_data = self.nusc.get('sample_data', lidar_token)
-            
-    #         box_list.append(self.nusc.get_boxes(lidar_token))            
-    #         lidar_pc = LidarPointCloud.from_file(lidar_path)
-    #         cs_record = self.nusc.get('calibrated_sensor', lidar_data['calibrated_sensor_token'])
-
-    #         #sensor to vehicle
-    #         lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
-    #         lidar_pc.translate(np.array(cs_record['translation']))
-    #         if return_global:
-    #             ## vehicle to global
-    #             lidar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
-    #             lidar_pc.translate(np.array(pose_rec['translation']))
-    #         lidar_pc_sweeps.append(lidar_pc.points)
-
-    #     lidar_sweeps = lidar_pc_sweeps
-    #     sweep_annotations = box_list
-
-    #     #Get Radar sweeps and combine into one point cloud
-    #     all_radars = []
-    #     for radar in self.RADARS:
-    #         current_radar = []
-            
-    #         for radar_token in frame['sweeps'][radar]:
-    #             # pose_rec = self.nusc.get('ego_pose', self.nusc.get('sample_data', radar_token)['ego_pose_token'])
-    #             radar_path = self.nusc.get_sample_data_path(radar_token)
-    #             radar_data = self.nusc.get('sample_data', radar_token)
-    #             current_radar_pc = self._get_radar_data(radar_path, radar_data)
-    #             if return_global:
-    #                 ## vehicle to global
-    #                 current_radar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
-    #                 current_radar_pc.translate(np.array(pose_rec['translation']))
-    #             current_radar.append(current_radar_pc.points)
-
-    #         all_radars.append(current_radar)
-        
-    #     points = []
-    #     for sweep in zip(all_radars[0],all_radars[1],all_radars[2],all_radars[3],all_radars[4]):
-    #         current_points = np.zeros((18,0))
-    #         for pc in sweep:
-    #             current_points = np.hstack((current_points, pc))
-    #         points.append(current_points)
-        
-    #     radar_sweeps = points
-
-    #     return lidar_sweeps, radar_sweeps, sweep_annotations
-
-
-
 ###############################################################################
 if __name__ == "__main__":
     dataset = NuscenesDataset(root_path='../../data/datasets/nuscenes', 
@@ -331,7 +272,6 @@ if __name__ == "__main__":
     vis.visualize_frame_data(gt_boxes=sensor_data["annotations"],
                         radar_pc=sensor_data['radar']['points'].points,
                         lidar_pc=sensor_data['lidar']['points'].points,
-                        #  image=sensor_data['camera'][2]['image'],
                         cam_coord=False)
     input('here')
     # print(dataset.imdb['frames'][0])
