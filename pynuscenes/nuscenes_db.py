@@ -1,5 +1,4 @@
 from tqdm import tqdm
-# from pathlib import Path
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
@@ -11,30 +10,12 @@ from multiprocessing import RLock, Pool, freeze_support
 import multiprocessing
 import os
 import logging
+from .utils import constants
 
-class NuscenesIMDB(object):
+class NuscenesDB(object):
     """
-    Image database for the Nuscenes dataset.
+    Token database for the nuscenes dataset
     """
-    CAMS = ['CAM_FRONT_LEFT',
-            'CAM_FRONT_RIGHT',
-            'CAM_FRONT',
-            'CAM_BACK_LEFT',
-            'CAM_BACK_RIGHT',
-            'CAM_BACK']
-
-    CAM_ID = { 'CAM_FRONT_LEFT':  0,
-               'CAM_FRONT_RIGHT': 1,
-               'CAM_FRONT':       2,
-               'CAM_BACK_LEFT':   3,
-               'CAM_BACK_RIGHT':  4,
-               'CAM_BACK':        5}
-
-    RADARS = ['RADAR_FRONT_LEFT',
-              'RADAR_FRONT_RIGHT',
-              'RADAR_FRONT',
-              'RADAR_BACK_LEFT',
-              'RADAR_BACK_RIGHT']
 
     def __init__(self,
                  root_path,
@@ -54,13 +35,13 @@ class NuscenesIMDB(object):
         """
 
         ## Set up logger
-        self.logger = logging.getLogger('imdb_generator')
+        self.logger = logging.getLogger('pynuscenes')
         self.logger.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         if verbose:
             ch.setLevel(logging.DEBUG)
         else:
-            ch.setLevel(logging.WARNING)
+            ch.setLevel(logging.INFO)
         formatter = logging.Formatter('%(filename)s:%(lineno)d %(levelname)s:: %(message)s')
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
@@ -69,47 +50,49 @@ class NuscenesIMDB(object):
         assert nusc_version in self.available_vers
         self.short_version = str(nusc_version.split('-')[1])
         self.root_path = root_path
+        self.nusc_root = os.path.join(root_path, 'datasets', 'nuscenes')
         self.nusc_version = nusc_version
+        os.makedirs(os.path.join(self.root_path, 'database', self.nusc_version), exist_ok=True)
         self.max_cam_sweeps = max_cam_sweeps
         self.max_lidar_sweeps = max_lidar_sweeps
         self.max_radar_sweeps = max_radar_sweeps
-        self.is_test = "test" in self.nusc_version
-        self.imdb = {}
-        self.nusc = NuScenes(version=nusc_version, dataroot=root_path, verbose=True)
+        self.db = {}
+        self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=True)
         self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
         self.id_length = 8
 
     ##--------------------------------------------------------------------------
-    def generate_imdb(self) -> None:
+    def generate_db(self) -> None:
         """
-        Create an image databaser (imdb) for the NuScnenes dataset and save it
+        Create an image databaser (db) for the NuScnenes dataset and save it
         to a pickle file
         """
-        self.logger.info('Creating imdb for the NuScenes dataset ...')
+        self.logger.info('Creating db for the NuScenes dataset ...')
         self._split_scenes()
         train_nusc_frames, val_nusc_frames, test_nusc_frames = self._get_frames()
         metadata = {"version": self.nusc_version}
 
-        if self.is_test:
+        if self.nusc_version == 'v1.0-test':
             self.logger.info('Test sample length: {}'.format(str(len(test_nusc_frames))))
-            self.imdb['test'] = {"frames": test_nusc_frames, "metadata": metadata}
-            imdb_filename = "{}_imdb_test.pkl".format(self.short_version)
-            self.logger.info('Writing pickle file at {}'.format(imdb_filename))
-            with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
-                pickle.dump(self.imdb['test'], f)
+            self.db['test'] = {"frames": test_nusc_frames, "metadata": metadata}
+            db_filename = "test_db.pkl"
+            self.logger.info('Writing pickle file at {}'.format(db_filename))
+            with open(os.path.join(self.root_path, 'database', self.nusc_version \
+                ,db_filename), 'wb') as f:
+                pickle.dump(self.db['test'], f)
 
         else:
             self.logger.info('Train sample length: {}, val sample length: {}'.format(str(len(train_nusc_frames)), str(len(val_nusc_frames))))
-            self.imdb['train'] = {"frames": train_nusc_frames, "metadata": metadata}
-            imdb_filename = "{}_imdb_train.pkl".format(self.short_version)
-            with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
-                pickle.dump(self.imdb['train'], f)
+            self.db['train'] = {"frames": train_nusc_frames, "metadata": metadata}
+            db_filename = "train_db.pkl"
+            with open(os.path.join(self.root_path, 'database', self.nusc_version, db_filename), 'wb') as f:
+                pickle.dump(self.db['train'], f)
 
-            self.imdb['val'] = {"frames": val_nusc_frames, "metadata": metadata}
-            imdb_filename = "{}_imdb_val.pkl".format(self.short_version)
-            self.logger.info('Writing pickle file at {}'.format(imdb_filename))
-            with open(os.path.join(self.root_path, imdb_filename), 'wb') as f:
-                pickle.dump(self.imdb['val'], f)
+            self.db['val'] = {"frames": val_nusc_frames, "metadata": metadata}
+            db_filename = "val_db.pkl"
+            self.logger.info('Writing pickle file at {}'.format(db_filename))
+            with open(os.path.join(self.root_path, 'database', self.nusc_version, db_filename), 'wb') as f:
+                pickle.dump(self.db['val'], f)
 
     ##--------------------------------------------------------------------------
     def _split_scenes(self) -> None:
@@ -133,7 +116,7 @@ class NuscenesIMDB(object):
             else:
                 raise Exception('scene not in splits...split table may not be complete')
 
-        if self.is_test:
+        if self.nusc_version == 'v1.0-test':
             self.logger.info('test: {} scenes'.format(str(len(self.test_scenes))))
         else:
             self.logger.info('train: {} scenes, val: {} scenes'.format(str(len(self.train_scenes)), str(len(self.val_scenes))))
@@ -145,12 +128,12 @@ class NuscenesIMDB(object):
         """
         self.sample_id = 0
 
-        self.logger.info('Generating train frames')
+        self.logger.debug('Generating train frames')
         train_nusc_frames = []
         for scene in tqdm(self.train_scenes, desc="train scenes", position=0):
             train_nusc_frames = train_nusc_frames + self.process_scene_samples(scene)
 
-        self.logger.info('Generating val frames')
+        self.logger.debug('Generating val frames')
         val_nusc_frames = []
         for scene in tqdm(self.val_scenes, desc="val scenes", position=0):
             val_nusc_frames = val_nusc_frames + self.process_scene_samples(scene)
@@ -194,9 +177,9 @@ class NuscenesIMDB(object):
             #           ...
             #           RADAR_BACK_RIGHT: token
             #          }
-            sample.update({cam: sample_sensor_records[cam]['token'] for cam in self.CAMS})
+            sample.update({cam: sample_sensor_records[cam]['token'] for cam in constants.CAMERAS.keys()})
             sample.update({'LIDAR_TOP': sample_sensor_records['LIDAR_TOP']['token']})
-            sample.update({x: sample_sensor_records[x]['token'] for x in self.RADARS})
+            sample.update({x: sample_sensor_records[x]['token'] for x in constants.RADARS.keys()})
 
             frame = {'sample': sample,
                      'sweeps': self._get_sweeps(sample_sensor_records),
@@ -230,11 +213,11 @@ class NuscenesIMDB(object):
 
         sweep.update({'LIDAR_TOP': lidar_sweeps})
 
-        for cam in self.CAMS:
+        for cam in constants.CAMERAS.keys():
             cam_sweeps = {cam: self._get_previous_sensor_sweeps(sweep_sensor_records[cam], self.max_cam_sweeps)}
             sweep.update({cam: cam_sweeps[cam]})
 
-        for radar in self.RADARS:
+        for radar in constants.RADARS.keys():
             radar_sweeps = {radar: self._get_previous_sensor_sweeps(sweep_sensor_records[radar], self.max_radar_sweeps)}
             sweep.update({radar: radar_sweeps[radar]})
 
@@ -261,4 +244,4 @@ class NuscenesIMDB(object):
 
 
 if __name__ == "__main__":
-    test_imdb()
+    test_db()
