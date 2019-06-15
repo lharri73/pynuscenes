@@ -9,6 +9,7 @@ import os
 import logging
 from tqdm import tqdm
 from pynuscenes.utils.visualize import *
+
 def test_dataset():
     dataset = pynuscenes.NuscenesDataset(nusc_path='../data/datasets/nuscenes', 
                                         nusc_version='v1.0-mini', 
