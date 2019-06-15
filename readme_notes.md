@@ -10,10 +10,10 @@ pip uninstall PyQt5
     │   │   ├── v1.0-mini
     │   │   ├── v1.0-test
     │   │   └── v1.0-trainval
-    |   |
-    │   └── datasets
+	│   │ 
+    │   ├─── datasets
     │   │   └── nuscenes
-    |   ├── proposals? 
+    │   ├── proposals? 
 
  ```
 <!-- TODO: is proposals needed? -->
