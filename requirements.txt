@@ -1,3 +1,4 @@
+numpy==1.16.4
 apptools==4.4.0
 attrs==19.1.0
 backcall==0.1.0
@@ -24,12 +25,12 @@ jupyter-core==4.4.0
 kiwisolver==1.1.0
 MarkupSafe==1.1.1
 matplotlib==3.1.0
+vtk==8.1.2
 mayavi==4.6.2
 mistune==0.8.4
 nbconvert==5.5.0
 nbformat==4.4.0
 notebook==5.7.8
-numpy==1.16.4
 nuscenes-devkit==1.0.1
 opencv-python==4.1.0.25
 pandocfilters==1.4.2
@@ -60,7 +61,6 @@ tqdm==4.32.1
 traitlets==4.3.2
 traits==5.1.1
 traitsui==6.1.1
-vtk==8.1.2
 wcwidth==0.1.7
 webencodings==0.5.1
 widgetsnbextension==3.4.2

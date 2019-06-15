@@ -5,6 +5,8 @@
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
+import logging
+
 def initialize_logger(name, verbose=False):
     ## Set up logger
     logger = logging.getLogger(name)

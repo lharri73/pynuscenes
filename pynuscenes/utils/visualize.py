@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Thu Jun 13 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Fri Jun 14 2019                                            ##
+## Last Modified : Sat Jun 15 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -11,7 +11,7 @@ import numpy as np
 from pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
-
+import copy
 def show_sample_data(sample):
     """
     Render the data from all sensors in a single sample
@@ -33,9 +33,7 @@ def show_sample_data(sample):
          sample['camera'][_C.CAMERAS[cam]]['cs_record'])
         image_list[1].append(image)
 
-    print(len(image_list[0]))
     image = _arrange_images(image_list)
-
         
     cv2.imshow('image', image)
     cv2.waitKey(0)

@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Fri Jun 14 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Fri Jun 14 2019                                            ##
+## Last Modified : Sat Jun 15 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -96,7 +96,6 @@ class NuscenesDB(object):
             db_filename = "{}_db.pkl".format(self.split)
             with open(os.path.join(out_dir, db_filename), 'wb') as f:
                 pickle.dump(self.db['test'], f)
-
             
     ##--------------------------------------------------------------------------
     def _split_scenes(self) -> None:

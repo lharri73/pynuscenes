@@ -1,9 +1,10 @@
 ################################################################################
-# Date Created: Friday June 14th 2019                                          #
-# Author: Landon Harris, Ramin Nabati                                          #
-# Last Modified: Fri Jun 14 2019                                               #
-# Copyright (c) 2019                                                           #
+## Date Created  : Sat Jun 14 2019                                            ##
+## Authors       : Landon Harris, Ramin Nabati                                ##
+## Last Modified : Sat Jun 15 2019                                            ##
+## Copyright (c) 2019                                                         ##
 ################################################################################
+
 import io
 import logging
 import os
@@ -19,7 +20,6 @@ from pyquaternion import Quaternion
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
 from .utils import init_logger
-
 
 class NuscenesDataset(NuscenesDB):
     def __init__(self, 
@@ -40,6 +40,7 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps_lidar: number of sweeps to use for the LDIAR
         :param nsweeps_radar: number of sweeps to use for the Radar
         """
+
         self.available_coordinates = ['vehicle', 'global']
         assert coordinates in self.available_coordinates, \
             'Coordinate system not available.'
@@ -83,6 +84,7 @@ class NuscenesDataset(NuscenesDB):
         :param idx: id of the dataset's split to retrieve
         :return sensor_data: dictionary containing all sensor data for that frame
         """
+
         frame = self.db['frames'][idx]
         # print(self.db)
         sensor_data = {
@@ -144,6 +146,7 @@ class NuscenesDataset(NuscenesDB):
         :param pose_record: ego pose record dictionary from nuscenes
         :return: list of Nuscenes Boxes
         """
+
         if self.split == 'test':
             return []
         else:
@@ -205,6 +208,7 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps: number of sweeps to return for this radar
         :return pc: RadarPointCloud containing this samnple and all sweeps
         """
+
         radar_path = os.path.join(self.nusc_path, sample_data['filename'])
         cs_record = self.nusc.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
@@ -236,6 +240,7 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps: number of sweeps to return for the LIDAR
         :return: LidarPointCloud containing this sample and all sweeps
         """
+
         lidar_path = os.path.join(self.nusc_path, sample_data['filename'])
         cs_record = self.nusc.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
@@ -249,8 +254,9 @@ class NuscenesDataset(NuscenesDB):
             lidar_pc = LidarPointCloud.from_file(lidar_path)
 
         ## Sensor to vehicle
-        lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
-        lidar_pc.translate(np.array(cs_record['translation']))
+        if nsweeps <= 1:
+            lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
+            lidar_pc.translate(np.array(cs_record['translation']))
         
         ## Vehicle to global
         if self.coordinates == 'global':
@@ -263,8 +269,9 @@ class NuscenesDataset(NuscenesDB):
     def _get_cam_data(self, cam_token: str) -> (np.ndarray, np.ndarray):
         """
         :param cam_token: sample data token for this camera
-        :return image, intrinsics: numpy array of the image, 
+        :return image, intrinsics: numpy array of the image intrinsics
         """
+
         ## Get camera image
         cam_path = self.nusc.get_sample_data_path(cam_token)
         cam_data = self.nusc.get('sample_data', cam_token)
@@ -300,24 +307,3 @@ class NuscenesDataset(NuscenesDB):
         pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
 
         return pc
-        
-
-        
-
-###############################################################################
-if __name__ == "__main__":
-    dataset = NuscenesDataset(nusc_path='../../data/datasets/nuscenes', 
-                              nusc_version='mini', 
-                              imdb_path=None, 
-                              split='train',
-                              coordinates='vehicle',
-                              nsweeps_lidar=5,
-                              nsweeps_radar=2)
-    
-    sensor_data = dataset[19]
-    vis.visualize_frame_data(gt_boxes=sensor_data["annotations"],
-                        radar_pc=sensor_data['radar']['points'].points,
-                        lidar_pc=sensor_data['lidar']['points'].points,
-                        cam_coord=False)
-    input('here')
-    # print(dataset.imdb['frames'][0])
