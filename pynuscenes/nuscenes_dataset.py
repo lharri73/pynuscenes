@@ -18,6 +18,7 @@ from pyquaternion import Quaternion
 
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
+from .utils import init_logger
 
 
 class NuscenesDataset(NuscenesDB):
@@ -45,7 +46,7 @@ class NuscenesDataset(NuscenesDB):
         assert split in _C.NUSCENES_SPLITS[nusc_version], \
             'Invalid split specified'
 
-        self.logger = logging.getLogger('pynuscenes')
+        self.logger = init_logger.initialize_logger('pynuscenes')
         self.coordinates = coordinates
         self.nusc_path = nusc_path
         self.split = split

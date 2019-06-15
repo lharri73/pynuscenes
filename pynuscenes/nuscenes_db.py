@@ -17,7 +17,7 @@ from multiprocessing import RLock, Pool, freeze_support
 import multiprocessing
 import os
 import logging
-from .utils import constants
+from .utils import constants, init_logger
 
 class NuscenesDB(object):
     """
@@ -31,7 +31,8 @@ class NuscenesDB(object):
                  max_cam_sweeps=6,
                  max_lidar_sweeps=10,
                  max_radar_sweeps=6,
-                 verbose=False):
+                 verbose=False,
+                 nusc=None):
         """
         Image database object that holds the sample data tokens for the nuscenes dataset
         :param root_path: location of the nuscenes dataset
@@ -54,26 +55,22 @@ class NuscenesDB(object):
         assert nusc_version in constants.NUSCENES_SPLITS.keys(), \
             "Nuscenes version not valid."
         assert split in constants.NUSCENES_SPLITS[nusc_version], \
-            "Nuscenes split is not valid for {}".format(nusc_version)
+            "Nuscenes split ({}) is not valid for {}".format(split, nusc_version)
 
-        self.logger = self._set_logger(verbose)
-        self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=True)
-        self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
-
-    ##--------------------------------------------------------------------------
-    def _set_logger(self, verbose):
-        ## Set up logger
-        logger = logging.getLogger('pynuscenes')
-        logger.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        if verbose:
-            ch.setLevel(logging.DEBUG)
+        self.logger = init_logger.initialize_logger('pynuscenes', verbose)
+        if nusc is not None:
+            if self.nusc.version != nusc_version:
+                self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
+                self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=verbose)
+                self.logger.info('Done!')
+            else:
+                self.nusc = nusc
         else:
-            ch.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(filename)s:%(lineno)d %(levelname)s:: %(message)s')
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-        return logger
+            self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
+            self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=verbose)
+            self.logger.info('Done!')
+        
+        self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
 
     ##--------------------------------------------------------------------------
     def generate_db(self, out_dir=None) -> None:
@@ -81,7 +78,7 @@ class NuscenesDB(object):
         Create an image databaser (db) for the NuScnenes dataset and save it
         to a pickle file
         """
-        self.logger.info('Creating db for the NuScenes dataset ...')
+        self.logger.info('Creating db for {} {} dataset ...'.format(self.nusc_version, self.split))
         scenes_list = self._split_scenes()
         frames = self._get_frames(scenes_list)
         metadata = {"version": self.nusc_version}
@@ -113,7 +110,7 @@ class NuscenesDB(object):
             if scene['name'] in scene_split_names[self.split]:
                 scenes_list.append(scene['token'])
 
-        self.logger.info('{}: {} scenes'.format(self.nusc_version, str(len(scenes_list))))
+        self.logger.debug('{}: {} scenes'.format(self.nusc_version, str(len(scenes_list))))
 
         return scenes_list
     ##------------------------------------------------------------------------------
@@ -133,10 +130,10 @@ class NuscenesDB(object):
     ##--------------------------------------------------------------------------
     def process_scene_samples(self, scene: str) -> list:
         """
-            Get sensor data and annotations for all samples in the scene.
-            :param scene: scene token
-            return samples: a list of dictionaries
-            frame (a dictionary with a sample, sweeps)
+        Get sensor data and annotations for all samples in the scene.
+        :param scene: scene token
+        return samples: a list of dictionaries
+        frame (a dictionary with a sample, sweeps)
         """
         scene_rec = self.nusc.get('scene', scene)
         scene_number = scene_rec['name'][-4:]
@@ -183,10 +180,10 @@ class NuscenesDB(object):
     ##------------------------------------------------------------------------------
     def _get_sweeps(self, sweep_sensor_records) -> dict:
         """
-            :param sweep_sensor_records: list of sample data records for the sensors to return sweeps for
-            returns dictionary of lists
-                key is the sensor name
-                value is the list sweep tokens
+        :param sweep_sensor_records: list of sample data records for the sensors to return sweeps for
+        :return: dictionary of lists
+            key is the sensor name
+            value is the list sweep tokens
         """
         sweep = {x: '' for x in self.SENSOR_NAMES}
         lidar_sweeps = self._get_previous_sensor_sweeps(sweep_sensor_records['LIDAR_TOP'], self.max_lidar_sweeps)
@@ -210,9 +207,9 @@ class NuscenesDB(object):
     ##------------------------------------------------------------------------------
     def _get_previous_sensor_sweeps(self, sample_data, num_sweeps) -> list: 
         """
-            Gets the previous sweeps for one senser
-            :param sample_data: sample_data dictionary for the sensor
-            :param num_sweeps: number of sweeps to return
+        Gets the previous sweeps for one senser
+        :param sample_data: sample_data dictionary for the sensor
+        :param num_sweeps: number of sweeps to return
         """
         sweeps = []
         while len(sweeps) < num_sweeps:
