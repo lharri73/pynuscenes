@@ -255,11 +255,13 @@ class NuscenesDataset(NuscenesDB):
 
         ## Sensor to vehicle
         if nsweeps <= 1:
+            print('running sensor to vehicle')
             lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
             lidar_pc.translate(np.array(cs_record['translation']))
         
         ## Vehicle to global
         if self.coordinates == 'global':
+            print('running vehicle to global')
             lidar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
             lidar_pc.translate(np.array(pose_rec['translation']))
 
@@ -286,18 +288,19 @@ class NuscenesDataset(NuscenesDB):
     
     ##--------------------------------------------------------------------------
     @staticmethod
-    def pc_to_sensor(self, pc, sensor_name, cs_record, global_coordinates=False, ego_pose=None):
+    def pc_to_sensor(pc, cs_record, global_coordinates=False, ego_pose=None):
         """
         Tramsform the iput point cloud from global/vehicle coordinates to
         sensor coordinates
         """
+        # if global_coordinates:
+        #     assert ego_pose is None, 'When in global coordinates, ego_pose is required'
+        # if ego_pose is not None:
 
-        assert global_coordinates and ego_pose is not None, \
-            'When in global coordinates, ego_pose is required'
-        assert sensor_name not in _C.RADARS.keys(), \
-            'Cannot transform to Radar coordinates'
+        assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
+            'when in global coordinates, ego_pose is required'
         
-        if ego_pose is not None and global_coordinates:
+        if global_coordinates:
             ## Transform from global to vehicle
             pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix)
             pc.translate(np.array(ego_pose['translation']))

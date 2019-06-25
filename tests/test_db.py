@@ -9,13 +9,20 @@ from context import pynuscenes
 import os
 import pickle
 import logging
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_location', type=str, default='../data/datasets/nuscenes')
+parser.add_argument('--versions')
+
+FLAGS = parser.parse_args()
+
 def test_nuscenes_db():
     logger = logging.getLogger('pynuscenes')
-    root = '/CAVS/object_detection/nuscenes_dataset/data/datasets/nuscenes'
+    root = FLAGS.data_location
     nusc = None
     passed = True
     for nuscenes_version in pynuscenes.utils.constants.NUSCENES_SPLITS.keys():
-        database_path = os.path.join(root, 'database', nuscenes_version)
         num_samples = 0
         for split in pynuscenes.utils.constants.NUSCENES_SPLITS[nuscenes_version]:
             nuscenes_db = pynuscenes.NuscenesDB(root, nusc_version=nuscenes_version, split=split, nusc=nusc)
