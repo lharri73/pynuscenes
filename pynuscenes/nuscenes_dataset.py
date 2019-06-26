@@ -29,7 +29,8 @@ class NuscenesDataset(NuscenesDB):
                  db_file=None, 
                  coordinates='vehicle',
                  nsweeps_lidar=1,
-                 nsweeps_radar=1) -> None:
+                 nsweeps_radar=1, 
+                 sensors_to_return=['lidar','radar','camera']) -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -39,6 +40,7 @@ class NuscenesDataset(NuscenesDB):
         :param coordinates: coordinate system to return all data in
         :param nsweeps_lidar: number of sweeps to use for the LDIAR
         :param nsweeps_radar: number of sweeps to use for the Radar
+        :param sensors_to_return: a list of sensor modalities to return (will skip all others)
         """
 
         self.available_coordinates = ['vehicle', 'global']
@@ -46,7 +48,7 @@ class NuscenesDataset(NuscenesDB):
             'Coordinate system not available.'
         assert split in _C.NUSCENES_SPLITS[nusc_version], \
             'Invalid split specified'
-
+        self.sensors_to_return = sensors_to_return
         self.logger = init_logger.initialize_logger('pynuscenes')
         self.coordinates = coordinates
         self.nusc_path = nusc_path
@@ -118,20 +120,23 @@ class NuscenesDataset(NuscenesDB):
                                    'rotation': pose_rec['rotation']}
 
         ## Get LIDAR data
-        sensor_data['lidar']['points'], sensor_data['lidar']['cs_record'] = \
-             self._get_lidar_data(sample_rec, lidar_sample_data, pose_rec, self.nsweeps_lidar)
+        if 'lidar' in self.sensors_to_return:
+            sensor_data['lidar']['points'], sensor_data['lidar']['cs_record'] = \
+                self._get_lidar_data(sample_rec, lidar_sample_data, pose_rec, self.nsweeps_lidar)
 
         ## Get camera data
-        for i, cam in enumerate(_C.CAMERAS.keys()):
-            image, cs_record = self._get_cam_data(frame['sample'][cam])
-            sensor_data['camera'][i]['image'] = image
-            sensor_data['camera'][i]['cs_record'] = cs_record
+        if 'camera' in self.sensors_to_return:
+            for i, cam in enumerate(_C.CAMERAS.keys()):
+                image, cs_record = self._get_cam_data(frame['sample'][cam])
+                sensor_data['camera'][i]['image'] = image
+                sensor_data['camera'][i]['cs_record'] = cs_record
 
         ## Get Radar data
-        sensor_data['radar']['points'] = self._get_all_radar_data(frame,
-                                                                  sample_rec,
-                                                                  pose_rec,
-                                                                  self.nsweeps_radar)
+        if 'radar' in self.sensors_to_return:
+            sensor_data['radar']['points'] = self._get_all_radar_data(frame,
+                                                                    sample_rec,
+                                                                    pose_rec,
+                                                                    self.nsweeps_radar)
        ## Get annotations
         sensor_data["annotations"] = self._get_annotations(frame, pose_rec)
         # print('nuscenes dataset', res['lidar']['points'].points.shape)
