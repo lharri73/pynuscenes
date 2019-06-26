@@ -13,6 +13,7 @@ from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy
 from mayavi.mlab import *
+import matplotlib.pyplot as plt
 
 def show_sample_data(sample):
     """
@@ -25,20 +26,21 @@ def show_sample_data(sample):
     btm_row = ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
     image_list = [[], []] 
     for cam in top_row:
-        image = map_pointcloud_to_image(sample['lidar']['points'],
-         sample['camera'][_C.CAMERAS[cam]]['image'], 
-         sample['camera'][_C.CAMERAS[cam]]['cs_record'])
+        thisSample = copy.deepcopy(sample)
+        image = map_pointcloud_to_image(thisSample['lidar']['points'],
+         thisSample['camera'][_C.CAMERAS[cam]]['image'], 
+         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'])
         image_list[0].append(image)
     for cam in btm_row:
-        image = map_pointcloud_to_image(sample['lidar']['points'],
-         sample['camera'][_C.CAMERAS[cam]]['image'], 
-         sample['camera'][_C.CAMERAS[cam]]['cs_record'])
+        thisSample = copy.deepcopy(sample)
+        image = map_pointcloud_to_image(thisSample['lidar']['points'],
+         thisSample['camera'][_C.CAMERAS[cam]]['image'], 
+         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'])
         image_list[1].append(image)
 
     image = _arrange_images(image_list)
-    print(sample['lidar']['points'].points.shape)
     cv2.imshow('images', image)
-    cv2.waitKey(0)
+    cv2.waitKey(1)
 
 def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     """
@@ -63,45 +65,51 @@ def map_pointcloud_to_image(pc, im, cam_cs_record):
     :return (pointcloud <np.float: 2, n)>, coloring <np.float: n>, image <Image>).
     """
     ## Transform into the camera.
-    # pc.translate(-np.array(cam_cs_record['translation']))
-    # pc.rotate(Quaternion(cam_cs_record['rotation']).rotation_matrix.T)
     pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record)
-    points3d(pc.points[0, :], pc.points[1, :], pc.points[2, :], scale_factor=.25)
-    input('this should be the points in camera coordinates')
+    # points3d(0,0,0,scale_factor=1, color=(1,0,0))
+    # points3d(pc.points[0, :], pc.points[1, :], pc.points[2, :], scale_factor=.25)
+    # input('this should be the points in camera coordinates')
 
-    # Grab the depths (camera frame z axis points away from the camera).
+    ## Grab the depths (camera frame z axis points away from the camera).
     depths = pc.points[2, :]
 
-    # Retrieve the color from the depth.
+    ## Retrieve the color from the depth.
     coloring = depths
 
-    # Take the actual picture (matrix multiplication with camera-matrix + renormalization).
+    ## Take the actual picture (matrix multiplication with camera-matrix + renormalization).
     points = view_points(pc.points[:3, :], np.array(cam_cs_record['camera_intrinsic']), normalize=True)
     # points3d(0, 0, 0, color=(1, 0, 0))
-    np.set_printoptions(threshold=np.inf)
-    print(points.T)
+    # np.set_printoptions(threshold=np.inf)
+    # print(points.T)
     
-    points3d(points[0,:], points[1,:], points[2,:], scale_factor=25)
-    input('this should be the points in camera coordinates')
+    # points3d(points[0,:], points[1,:], points[2,:], scale_factor=25)
+    # input('this should be the points in image coordinates')
 
-    # Remove points that are either outside or behind the camera. Leave a margin of 1 pixel for aesthetic reasons.
+    ## Remove points that are either outside or behind the camera. Leave a margin of 1 pixel for aesthetic reasons.
     mask = np.ones(depths.shape[0], dtype=bool)
     mask = np.logical_and(mask, depths > 0)
     mask = np.logical_and(mask, points[0, :] > 1)
-    mask = np.logical_and(mask, points[0, :] < im.shape[0] - 1)
+    mask = np.logical_and(mask, points[0, :] < im.shape[1] - 1)
     mask = np.logical_and(mask, points[1, :] > 1)
-    mask = np.logical_and(mask, points[1, :] < im.shape[1] - 1)
+    mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
     points = points[:, mask]
     coloring = coloring[mask]
     # np.set_printoptions(threshold=np.inf)
     im = plot_points_on_image(im, points.T, coloring)
+    # plt.figure(figsize=(9, 16))
+    # plt.imshow(im)
+    # plt.scatter(points[0, :], points[1, :], c=coloring, s=5)
+    # plt.axis('off')
+    # plt.show()
+    # input('wait')
     # cv2.imshow('im1', im)
     # cv2.waitKey(0)
     return im
 
 def plot_points_on_image(image, points, coloring):
     newPoint = [0,0]
+    coloring = coloring * 255.0 / 20.0
     for i, point in enumerate(points):
         newPoint[0], newPoint[1] = int(point[0]), int(point[1])
-        cv2.circle(image, tuple(newPoint), 2, (int(coloring[i]),int(coloring[i]),int(coloring[i])), -1)
+        cv2.circle(image, tuple(newPoint), 2, (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image

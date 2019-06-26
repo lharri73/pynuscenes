@@ -3,7 +3,7 @@ to run over ssh, uninstall PyQt5
 pip uninstall PyQt5
 ```
 
-## File Structure
+ ## File Structures
 ```
     ├── data
     │   ├── database
@@ -17,3 +17,4 @@ pip uninstall PyQt5
 
  ```
 <!-- TODO: is proposals needed? -->
+https://prod.liveshare.vsengsaas.visualstudio.com/join?F141E6E84AD669BCC733E01B17BBDD7AD48A

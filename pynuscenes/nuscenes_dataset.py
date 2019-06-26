@@ -62,8 +62,8 @@ class NuscenesDataset(NuscenesDB):
         
         if db_file is None:
             super().generate_db()
-        elif  os.path.exists(out_dir):
-            with open(out_dir, 'rb') as f:
+        elif  os.path.exists(db_file):
+            with open(db_file, 'rb') as f:
                 self.db = pickle.load(f)
         else:
             self.logger.warning('{} does not exist, not saving'.format(db_file))
@@ -86,7 +86,6 @@ class NuscenesDataset(NuscenesDB):
         """
 
         frame = self.db['frames'][idx]
-        # print(self.db)
         sensor_data = {
             "lidar": {
                 "points": None,
@@ -141,7 +140,7 @@ class NuscenesDataset(NuscenesDB):
     ##--------------------------------------------------------------------------
     def _get_annotations(self, frame: dict, pose_rec: dict) -> [Box]:
         """
-        Gets the annotations for this sample
+        Gets the annotations for this sample in the vehicle coordinates
         :param frame: the frame returned from the db for this sample
         :param pose_record: ego pose record dictionary from nuscenes
         :return: list of Nuscenes Boxes
@@ -245,20 +244,19 @@ class NuscenesDataset(NuscenesDB):
         cs_record = self.nusc.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
         if nsweeps > 1:
+            ## Returns in vehicle
             lidar_pc, _ = LidarPointCloud.from_file_multisweep(self.nusc,
                                                         sample_rec, 
                                                         sample_data['channel'], 
                                                         sample_data['channel'], 
                                                         nsweeps=nsweeps)
         else:
+            ## returns in sensor coordinates
             lidar_pc = LidarPointCloud.from_file(lidar_path)
-
-        ## Sensor to vehicle
-        if nsweeps <= 1:
-            print('running sensor to vehicle')
+            ## Sensor to vehicle
             lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
             lidar_pc.translate(np.array(cs_record['translation']))
-        
+       
         ## Vehicle to global
         if self.coordinates == 'global':
             print('running vehicle to global')
@@ -293,15 +291,12 @@ class NuscenesDataset(NuscenesDB):
         Tramsform the iput point cloud from global/vehicle coordinates to
         sensor coordinates
         """
-        # if global_coordinates:
-        #     assert ego_pose is None, 'When in global coordinates, ego_pose is required'
-        # if ego_pose is not None:
-
         assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
             'when in global coordinates, ego_pose is required'
         
         if global_coordinates:
             ## Transform from global to vehicle
+            raise Exception('here')
             pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix)
             pc.translate(np.array(ego_pose['translation']))
 
