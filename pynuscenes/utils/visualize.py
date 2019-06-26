@@ -102,7 +102,6 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False):
     return im
 
 def plot_points_on_image(image, points, coloring, radius):
-    print(coloring)
     newPoint = [0,0]
     coloring = coloring * 255.0 / 20.0
     for i, point in enumerate(points):
