@@ -152,7 +152,6 @@ def draw_gt_boxes3d(gt_boxes3d, fig, box_names, color=(1,1,1), line_width=1, dra
     Returns:
         fig: updated fig
     ''' 
-    num = len(gt_boxes3d)
     for n, name in enumerate(box_names):
         b = gt_boxes3d[n]
         if color_list is not None:
