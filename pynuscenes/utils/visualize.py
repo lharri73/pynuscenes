@@ -30,12 +30,21 @@ def show_sample_data(sample):
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'])
+        image = map_pointcloud_to_image(thisSample['radar']['points'],
+         image, 
+         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+         radar=True)
         image_list[0].append(image)
+
     for cam in btm_row:
         thisSample = copy.deepcopy(sample)
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'])
+        image = map_pointcloud_to_image(thisSample['radar']['points'],
+         image, 
+         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+         radar=True)
         image_list[1].append(image)
 
     image = _arrange_images(image_list)
@@ -56,7 +65,7 @@ def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     image = np.vstack((row) for row in rows)
     return image
 
-def map_pointcloud_to_image(pc, im, cam_cs_record):
+def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False):
     """
     Given a point sensor (lidar/radar) token and camera sample_data token, load point-cloud and map it to the image
     plane.
@@ -66,9 +75,6 @@ def map_pointcloud_to_image(pc, im, cam_cs_record):
     """
     ## Transform into the camera.
     pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record)
-    # points3d(0,0,0,scale_factor=1, color=(1,0,0))
-    # points3d(pc.points[0, :], pc.points[1, :], pc.points[2, :], scale_factor=.25)
-    # input('this should be the points in camera coordinates')
 
     ## Grab the depths (camera frame z axis points away from the camera).
     depths = pc.points[2, :]
@@ -78,12 +84,6 @@ def map_pointcloud_to_image(pc, im, cam_cs_record):
 
     ## Take the actual picture (matrix multiplication with camera-matrix + renormalization).
     points = view_points(pc.points[:3, :], np.array(cam_cs_record['camera_intrinsic']), normalize=True)
-    # points3d(0, 0, 0, color=(1, 0, 0))
-    # np.set_printoptions(threshold=np.inf)
-    # print(points.T)
-    
-    # points3d(points[0,:], points[1,:], points[2,:], scale_factor=25)
-    # input('this should be the points in image coordinates')
 
     ## Remove points that are either outside or behind the camera. Leave a margin of 1 pixel for aesthetic reasons.
     mask = np.ones(depths.shape[0], dtype=bool)
@@ -94,22 +94,18 @@ def map_pointcloud_to_image(pc, im, cam_cs_record):
     mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
     points = points[:, mask]
     coloring = coloring[mask]
-    # np.set_printoptions(threshold=np.inf)
-    im = plot_points_on_image(im, points.T, coloring)
-    # plt.figure(figsize=(9, 16))
-    # plt.imshow(im)
-    # plt.scatter(points[0, :], points[1, :], c=coloring, s=5)
-    # plt.axis('off')
-    # plt.show()
-    # input('wait')
-    # cv2.imshow('im1', im)
-    # cv2.waitKey(0)
+    if radar:
+        im = plot_points_on_image(im, points.T, coloring, 8)
+    else:
+        im = plot_points_on_image(im, points.T, coloring, 2)
+
     return im
 
-def plot_points_on_image(image, points, coloring):
+def plot_points_on_image(image, points, coloring, radius):
+    print(coloring)
     newPoint = [0,0]
     coloring = coloring * 255.0 / 20.0
     for i, point in enumerate(points):
         newPoint[0], newPoint[1] = int(point[0]), int(point[1])
-        cv2.circle(image, tuple(newPoint), 2, (int(coloring[i]),0,255-int(coloring[i])), -1)
+        cv2.circle(image, tuple(newPoint), radius, (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image

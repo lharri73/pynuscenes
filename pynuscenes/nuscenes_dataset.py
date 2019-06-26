@@ -213,6 +213,7 @@ class NuscenesDataset(NuscenesDB):
                                   sample_data['calibrated_sensor_token'])
         
         if nsweeps > 1:
+            ## Returns in vehicle coordinates
             pc, _ = RadarPointCloud.from_file_multisweep(self.nusc,
                                                       sample_rec, 
                                                       sample_data['channel'], 
@@ -220,12 +221,13 @@ class NuscenesDataset(NuscenesDB):
                                                       nsweeps=nsweeps,
                                                       min_distance=self.radar_min_distance)
         else:
+            ## Returns in sensor coordinates
             pc = RadarPointCloud.from_file(radar_path)
+            ## Sensor to vehicle
+            rot_matrix = Quaternion(cs_record['rotation']).rotation_matrix
+            pc.rotate(rot_matrix)
+            pc.translate(np.array(cs_record['translation']))
 
-        ## Sensor to vehicle
-        rot_matrix = Quaternion(cs_record['rotation']).rotation_matrix
-        pc.rotate(rot_matrix)
-        pc.translate(np.array(cs_record['translation']))
 
         return pc
         
