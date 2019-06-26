@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Sat Jun 14 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Sat Jun 15 2019                                            ##
+## Last Modified : Sat Jun 26 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -145,7 +145,6 @@ class NuscenesDataset(NuscenesDB):
         :param pose_record: ego pose record dictionary from nuscenes
         :return: list of Nuscenes Boxes
         """
-
         if self.split == 'test':
             return []
         else:
@@ -261,7 +260,6 @@ class NuscenesDataset(NuscenesDB):
        
         ## Vehicle to global
         if self.coordinates == 'global':
-            print('running vehicle to global')
             lidar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
             lidar_pc.translate(np.array(pose_rec['translation']))
 
@@ -298,9 +296,8 @@ class NuscenesDataset(NuscenesDB):
         
         if global_coordinates:
             ## Transform from global to vehicle
-            raise Exception('here')
-            pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix)
-            pc.translate(np.array(ego_pose['translation']))
+            pc.translate(np.array(-np.array(ego_pose['translation'])))
+            pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
 
         ## Transform from vehicle to sensor
         pc.translate(-np.array(cs_record['translation']))
