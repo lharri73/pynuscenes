@@ -5,7 +5,6 @@
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
-from tqdm import tqdm
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
@@ -121,7 +120,7 @@ class NuscenesDB(object):
 
         self.logger.debug('Generating train frames')
         frames = []
-        for scene in tqdm(scenes_list, desc="scenes", position=0):
+        for scene in scenes_list:
             frames = frames + self.process_scene_samples(scene)
 
         return frames
@@ -138,9 +137,6 @@ class NuscenesDB(object):
         scene_number = scene_rec['name'][-4:]
         self.logger.debug('Processing scene {}'.format(scene_number))
 
-        ## Create progress bar
-        num_samples = scene_rec['nbr_samples']
-        tqdm_position = 1
         ## Get the first sample token in the scene
         sample_rec = self.nusc.get('sample', scene_rec['first_sample_token'])
         sample_sensor_records = {x: self.nusc.get('sample_data',

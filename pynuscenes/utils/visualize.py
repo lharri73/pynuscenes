@@ -6,9 +6,9 @@
 ################################################################################
 
 import cv2
-from pynuscenes.utils import constants as _C
+from nuscenes_dataset.pynuscenes.utils import constants as _C
 import numpy as np
-from pynuscenes.nuscenes_dataset import NuscenesDataset
+from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy
@@ -31,19 +31,18 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     image_list = [[], []] 
     for cam in top_row:
         thisSample = copy.deepcopy(sample)
-
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
          global_coords=global_coordinates,
-         ego_pose=sample['ego_pose'])
+         ego_pose=thisSample['ego_pose'])
 
         image = map_pointcloud_to_image(thisSample['radar']['points'],
          image, 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
          radar=True,
          global_coords=global_coordinates,
-         ego_pose=sample['ego_pose'])
+         ego_pose=thisSample['ego_pose'])
 
         image_list[0].append(image)
 
@@ -53,17 +52,18 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
          global_coords=global_coordinates,
-         ego_pose=sample['ego_pose'])
+         ego_pose=thisSample['ego_pose'])
         image = map_pointcloud_to_image(thisSample['radar']['points'],
          image, 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
          radar=True,
          global_coords=global_coordinates,
-         ego_pose=sample['ego_pose'])
+         ego_pose=thisSample['ego_pose'])
         image_list[1].append(image)
 
     mlab.clf(figure=fig)
-    draw_lidar(sample['lidar']['points'].points.T, fig=fig)
+    draw_pc(sample['lidar']['points'].points.T, fig=fig, scalar=sample['lidar']['points'].points.T[:,2])
+    draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), pts_mode='sphere', pts_scale=.5)
 
     corner_list = []
     box_names = []
@@ -72,7 +72,7 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         box_names.append(box.name)
     corner_list = np.swapaxes(np.array(corner_list),1,2)
 
-    draw_gt_boxes3d(corner_list, fig, box_names)
+    draw_gt_boxes3d(corner_list, box_names, fig=fig)
 
     image = _arrange_images(image_list)
     cv2.imshow('images', image)
@@ -139,20 +139,25 @@ def plot_points_on_image(image, points, coloring, radius):
         cv2.circle(image, tuple(newPoint), radius, (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image
 
-def draw_gt_boxes3d(gt_boxes3d, fig, box_names, color=(1,1,1), line_width=1, draw_text=True, text_scale=(.5,.5,.5), color_list=None):
-    ''' Draw 3D bounding boxes
-    Args:
-        gt_boxes3d: numpy array (n,8,3) for XYZs of the box corners
-        fig: mayavi figure handler
-        color: RGB value tuple in range (0,1), box line color
-        line_width: box line width
-        draw_text: boolean, if true, write box indices beside boxes
-        text_scale: three number tuple
-        color_list: a list of RGB tuple, if not None, overwrite color.
-    Returns:
-        fig: updated fig
+def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), line_width=1, draw_text=True, text_scale=(.5,.5,.5), color_list=None):
+    '''
+    Draw 3D bounding boxes
+    :param gt_boxes3d: numpy array (n,8,3) for XYZs of the box corners
+    :param box_names: list of names for every box
+    :param fig: mayavi figure handler
+    :param color: RGB value tuple in range (0,1), box line color
+    :param line_width: box line width
+    :param draw_text: boolean, if true, write box indices beside boxes
+    :param text_scale: three number tuple
+    :param color_list: a list of RGB tuple, if not None, overwrite color.
+    :return fig: updated fig
     ''' 
-    num = len(gt_boxes3d)
+    if fig is None: 
+        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1600, 1000))
+    if box_names is None:
+        box_names = []
+        for i in range(gt_boxes3d.shape[0]):
+            box_names.append(str(i))
     for n, name in enumerate(box_names):
         b = gt_boxes3d[n]
         if color_list is not None:
@@ -172,7 +177,8 @@ def draw_gt_boxes3d(gt_boxes3d, fig, box_names, color=(1,1,1), line_width=1, dra
     #mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
     return fig
 
-def draw_lidar(pc, color=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode='point', pts_color=None):
+def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode='point', \
+    pts_color=None):
     ''' Draw lidar points
     Args:
         pc: numpy array (n,3) of XYZ
@@ -182,6 +188,12 @@ def draw_lidar(pc, color=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode=
         fig: created or used fig
     '''
     if fig is None: fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None, engine=None, size=(1600, 1000))
-    if color is None: color = pc[:,2]
-    mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color, color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
+    if scalar is not None and pts_mode == 'point':
+        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
+    else:
+        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
     return fig
+
+
+def show_figure(fig):
+    plt.show(fig)

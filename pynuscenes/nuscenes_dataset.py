@@ -227,10 +227,11 @@ class NuscenesDataset(NuscenesDB):
         else:
             ## Returns in sensor coordinates
             pc = RadarPointCloud.from_file(radar_path)
-            ## Sensor to vehicle
-            rot_matrix = Quaternion(cs_record['rotation']).rotation_matrix
-            pc.rotate(rot_matrix)
-            pc.translate(np.array(cs_record['translation']))
+        
+        ## Sensor to vehicle
+        rot_matrix = Quaternion(cs_record['rotation']).rotation_matrix
+        pc.rotate(rot_matrix)
+        pc.translate(np.array(cs_record['translation']))
 
 
         return pc
@@ -259,9 +260,10 @@ class NuscenesDataset(NuscenesDB):
         else:
             ## returns in sensor coordinates
             lidar_pc = LidarPointCloud.from_file(lidar_path)
-            ## Sensor to vehicle
-            lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
-            lidar_pc.translate(np.array(cs_record['translation']))
+        
+        ## Sensor to vehicle
+        lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
+        lidar_pc.translate(np.array(cs_record['translation']))
        
         ## Vehicle to global
         if self.coordinates == 'global':
@@ -296,6 +298,7 @@ class NuscenesDataset(NuscenesDB):
         Tramsform the iput point cloud from global/vehicle coordinates to
         sensor coordinates
         """
+        assert pc is not None, 'Pointcloud cannot be None. Nothing to translate'
         assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
             'when in global coordinates, ego_pose is required'
         
