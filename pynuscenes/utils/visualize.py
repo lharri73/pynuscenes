@@ -9,6 +9,7 @@ import cv2
 from nuscenes_dataset.pynuscenes.utils import constants as _C
 import numpy as np
 from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
+from nuscenes_dataset.pynuscenes.utils.nuscenes_utils import boxes3d_to_corners3d, corners3d_to_image
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy
@@ -194,6 +195,57 @@ def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode='p
         mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
     return fig
 
-
 def show_figure(fig):
     plt.show(fig)
+
+def show_3dBoxes_on_image(boxes, img, cam_cs_record):
+    print(img.shape)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    corners = boxes3d_to_corners3d(boxes)
+    img_corners = corners3d_to_image(corners, cam_cs_record, (img.shape[1], img.shape[0]))
+    print(img_corners.shape)
+    for this_box_corners in img_corners:
+        img = render_cv2(img, this_box_corners)
+        cv2.imshow('image', img)
+        cv2.waitKey(1)
+        input('wait')
+    
+def render_cv2(im: np.ndarray,
+                corners: np.ndarray,
+                colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
+                linewidth: int = 2) -> None:
+    """
+    Renders box using OpenCV2.
+    :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
+    :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
+    :param linewidth: Linewidth for plot.
+    """
+
+    def draw_rect(selected_corners, color):
+        prev = selected_corners[-1]
+        for corner in selected_corners:
+            cv2.line(im,
+                        (int(prev[0]), int(prev[1])),
+                        (int(corner[0]), int(corner[1])),
+                        color, linewidth)
+            prev = corner
+
+    # Draw the sides
+    for i in range(4):
+        cv2.line(im,
+                    (int(corners.T[i][0]), int(corners.T[i][1])),
+                    (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
+                    colors[2][::-1], linewidth)
+
+    # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
+    draw_rect(corners.T[:4], colors[0][::-1])
+    draw_rect(corners.T[4:], colors[1][::-1])
+
+    # Draw line indicating the front
+    center_bottom_forward = np.mean(corners.T[2:4], axis=0)
+    center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
+    cv2.line(im,
+                (int(center_bottom[0]), int(center_bottom[1])),
+                (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
+                colors[0][::-1], linewidth)
+    return im

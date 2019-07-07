@@ -13,7 +13,7 @@ import pickle
 import cv2
 import numpy as np
 from nuscenes.nuscenes import NuScenes
-from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud
+from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
 from PIL import Image
 from pyquaternion import Quaternion
 
@@ -301,14 +301,26 @@ class NuscenesDataset(NuscenesDB):
         assert pc is not None, 'Pointcloud cannot be None. Nothing to translate'
         assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
             'when in global coordinates, ego_pose is required'
-        
-        if global_coordinates:
-            ## Transform from global to vehicle
-            pc.translate(np.array(-np.array(ego_pose['translation'])))
-            pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
+        if isinstance(pc, PointCloud):
+            
+            if global_coordinates:
+                ## Transform from global to vehicle
+                pc.translate(np.array(-np.array(ego_pose['translation'])))
+                pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
 
-        ## Transform from vehicle to sensor
-        pc.translate(-np.array(cs_record['translation']))
-        pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
+            ## Transform from vehicle to sensor
+            pc.translate(-np.array(cs_record['translation']))
+            pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
+        elif isinstance(pc, np.ndarray):
+            
+            if global_coordinates:
+                ## Transform from global to vehicle
+                for i in range(3):
+                    pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose['translation']))[i]
+                pc[:3, :] = np.dot(Quaternion(ego_pose['rotation']).rotation_matrix.T, pc[:3, :])
+            ## Transform from vehicle to sensor
+            for i in range(3):
+                pc[i, :] = pc[i, :] - np.array(cs_record['translation'])[i]
+            pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
 
         return pc
