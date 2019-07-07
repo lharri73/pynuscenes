@@ -9,7 +9,7 @@ import cv2
 from nuscenes_dataset.pynuscenes.utils import constants as _C
 import numpy as np
 from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
-from nuscenes_dataset.pynuscenes.utils.nuscenes_utils import boxes3d_to_corners3d, corners3d_to_image
+from nuscenes_dataset.pynuscenes.utils.nuscenes_utils import boxes3d_to_corners3d, corners3d_to_image, box_corners_to_2dBox
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy
@@ -199,17 +199,29 @@ def show_figure(fig):
     plt.show(fig)
 
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
-    print(img.shape)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     corners = boxes3d_to_corners3d(boxes)
     img_corners = corners3d_to_image(corners, cam_cs_record, (img.shape[1], img.shape[0]))
-    print(img_corners.shape)
     for this_box_corners in img_corners:
         img = render_cv2(img, this_box_corners)
         cv2.imshow('image', img)
         cv2.waitKey(1)
         input('wait')
-    
+
+def show_2dBoxes_on_image(boxes, image, cam_cs_record):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    corners = boxes3d_to_corners3d(boxes)
+    img_corners = corners3d_to_image(corners, cam_cs_record, (image.shape[1], image.shape[0]))
+    img_corners_2d = box_corners_to_2dBox(img_corners, (image.shape[1], image.shape[0]), mode='xyxy')
+    for i, this_box_corners in enumerate(img_corners_2d):
+        img = copy.deepcopy(image)
+        print(this_box_corners)
+        img = render_cv2(img, img_corners[i])
+        cv2.rectangle(img, (int(this_box_corners[0]), int(this_box_corners[1])), (int(this_box_corners[2]), int(this_box_corners[3])), (0,255,0), 2)
+        cv2.imshow('image', img)
+        cv2.waitKey(1)
+        input('wait')
+
 def render_cv2(im: np.ndarray,
                 corners: np.ndarray,
                 colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
