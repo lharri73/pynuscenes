@@ -12,7 +12,7 @@ from tqdm import tqdm
 from pynuscenes.utils.visualize import *
 
 def test_dataset():
-    dataset_location = '/DATA/nuscenes'
+    dataset_location = '../../../data/datasets/nuscenes'
     fig = None
     ## test vehicle coordinates
     dataset = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
@@ -23,8 +23,9 @@ def test_dataset():
                                         nsweeps_lidar=5,
                                         nsweeps_radar=5)    
     for sample in tqdm(dataset):
-        fig = show_sample_data(dataset[30], coordinates='vehicle', fig = fig)
-        input('press enter to continue')
+        pass
+        # fig = show_sample_data(dataset[30], coordinates='vehicle', fig = fig)
+        # input('press enter to continue')
     ## test global coordinates
 
     dataset = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 

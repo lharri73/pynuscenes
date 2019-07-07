@@ -30,7 +30,7 @@ class NuscenesDataset(NuscenesDB):
                  coordinates='vehicle',
                  nsweeps_lidar=1,
                  nsweeps_radar=1, 
-                 sensors_to_return=['lidar','radar','camera']) -> None:
+                 sensors_to_return=['lidar','radar','camera', 'image']) -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -283,12 +283,15 @@ class NuscenesDataset(NuscenesDB):
         cam_path = self.nusc.get_sample_data_path(cam_token)
         cam_data = self.nusc.get('sample_data', cam_token)
         cs_record = self.nusc.get('calibrated_sensor', cam_data['calibrated_sensor_token'])
-        if os.path.exists(cam_path):
-            with open(cam_path, 'rb') as f:
-                image_str = f.read()
+        if 'image' in self.sensors_to_return:
+            if os.path.exists(cam_path):
+                with open(cam_path, 'rb') as f:
+                    image_str = f.read()
+            else:
+                raise Exception('Camera image not found at {}'.format(cam_path))
+            image = np.array(Image.open(io.BytesIO(image_str)))
         else:
-            raise Exception('Camera image not found at {}'.format(cam_path))
-        image = np.array(Image.open(io.BytesIO(image_str)))
+            image = None
         return image, cs_record
     
     ##--------------------------------------------------------------------------
