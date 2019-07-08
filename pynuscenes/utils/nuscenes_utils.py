@@ -15,20 +15,6 @@ from shapely.geometry import LineString
 #TODO: remove me
 import time
 
-def boxes3d_to_corners3d(boxes3d):
-    """
-    Returns the bounding box corners.
-    :param wlh_factor: Multiply w, l, h by a factor to scale the box.
-    :return: <n, 3, 8>. First four corners are the ones facing forward.
-        The last four are the ones facing backwards.
-    """
-    raise NotImplementedError('do not use this function')
-    corners_list = []
-    for box in boxes3d:
-        corners_list.append(bbox_to_corners(box))
-    res = np.array(corners_list)
-    return res
-
 def bbox_to_corners(bboxes):
     """
     Convert a 3D bounding box in [x,y,z,w,l,h,ry] format to corners
@@ -78,7 +64,7 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
     """
     cornerList = []
     for box_corners in corners:
-        NuscenesDataset.pc_to_sensor(box_corners, cam_cs_record)
+        box_corners = NuscenesDataset.pc_to_sensor(box_corners, cam_cs_record)
         this_box_corners = view_points(box_corners, np.array(cam_cs_record['camera_intrinsic']), normalize=True)[:2, :]
 
         visible = np.logical_and(this_box_corners[0, :] > 0, this_box_corners[0, :] < img_shape[0])

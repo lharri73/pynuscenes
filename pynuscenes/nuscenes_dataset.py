@@ -20,6 +20,7 @@ from pyquaternion import Quaternion
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
 from .utils import init_logger
+import copy
 
 class NuscenesDataset(NuscenesDB):
     def __init__(self, 
@@ -296,14 +297,20 @@ class NuscenesDataset(NuscenesDB):
     
     ##--------------------------------------------------------------------------
     @staticmethod
-    def pc_to_sensor(pc, cs_record, global_coordinates=False, ego_pose=None):
+    def pc_to_sensor(pc_orig, cs_record, global_coordinates=False, ego_pose=None, make_copy=True):
         """
         Tramsform the iput point cloud from global/vehicle coordinates to
         sensor coordinates
         """
-        assert pc is not None, 'Pointcloud cannot be None. Nothing to translate'
+        assert pc_orig is not None, 'Pointcloud cannot be None. Nothing to translate'
         assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
             'when in global coordinates, ego_pose is required'
+        if make_copy:
+            ## Copy is required to prevent the original pointcloud from being manipulate
+            pc = copy.deepcopy(pc_orig)
+        else:
+            pc = pc_orig
+        
         if isinstance(pc, PointCloud):
             
             if global_coordinates:

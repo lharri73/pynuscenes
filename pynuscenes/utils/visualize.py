@@ -208,15 +208,15 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
         cv2.waitKey(1)
         input('wait')
 
-def show_2dBoxes_on_image(boxes, image, cam_cs_record):
+def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, img_corners_3d=None):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    corners = bbox_to_corners(boxes)
-    img_corners = corners3d_to_image(corners, cam_cs_record, (image.shape[1], image.shape[0]))
-    img_corners_2d = box_corners_to_2dBox(img_corners, (image.shape[1], image.shape[0]), mode='xyxy')
+    # corners = bbox_to_corners(boxes)
+    # img_corners = corners3d_to_image(corners, cam_cs_record, (image.shape[1], image.shape[0]))
+    # img_corners_2d = box_corners_to_2dBox(img_corners, (image.shape[1], image.shape[0]), mode='xyxy')
     for i, this_box_corners in enumerate(img_corners_2d):
         img = copy.deepcopy(image)
-        print(this_box_corners)
-        img = render_cv2(img, img_corners[i])
+        if img_corners_3d is not None:
+            img = render_cv2(img, img_corners_3d[i])
         cv2.rectangle(img, (int(this_box_corners[0]), int(this_box_corners[1])), (int(this_box_corners[2]), int(this_box_corners[3])), (0,255,0), 2)
         cv2.imshow('image', img)
         cv2.waitKey(1)
@@ -232,7 +232,6 @@ def render_cv2(im: np.ndarray,
     :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
     :param linewidth: Linewidth for plot.
     """
-
     def draw_rect(selected_corners, color):
         prev = selected_corners[-1]
         for corner in selected_corners:
