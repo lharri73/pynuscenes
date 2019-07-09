@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 ################################################################################
-## Date Created  : Sat Jun 14 2019                                            ##
+## Date Created  : July 9th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Sat Jun 26 2019                                            ##
+## Last Modified : July 9th, 2019                                             ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -16,6 +17,7 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
 from PIL import Image
 from pyquaternion import Quaternion
+from nuscenes.utils.geometry_utils import view_points, box_in_image
 
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
@@ -31,7 +33,8 @@ class NuscenesDataset(NuscenesDB):
                  coordinates='vehicle',
                  nsweeps_lidar=1,
                  nsweeps_radar=1, 
-                 sensors_to_return=['lidar','radar','camera', 'image']) -> None:
+                 sensors_to_return=['lidar','radar','camera', 'image'],
+                 mode='sample') -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -42,6 +45,7 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps_lidar: number of sweeps to use for the LDIAR
         :param nsweeps_radar: number of sweeps to use for the Radar
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
+        :param mode: 'camera' or 'sample'
         """
 
         self.available_coordinates = ['vehicle', 'global']
@@ -49,6 +53,10 @@ class NuscenesDataset(NuscenesDB):
             'Coordinate system not available.'
         assert split in _C.NUSCENES_SPLITS[nusc_version], \
             'Invalid split specified'
+        assert mode in ['camera', 'sample'], \
+            '{} is not a valid return mode'.format(mode)
+
+        self.mode = mode
         self.sensors_to_return = sensors_to_return
         self.logger = init_logger.initialize_logger('pynuscenes')
         self.coordinates = coordinates
@@ -75,19 +83,47 @@ class NuscenesDataset(NuscenesDB):
     def __getitem__(self, idx):
         self.logger.debug('retrieveing id: {}'.format(idx))
         assert idx <= len(self), 'Requested dataset index out of range'
-        return self.get_sensor_data(idx)
+        if self.mode == 'sample':
+            return self.get_sensor_data_by_sample(idx)
+        elif self.mode == 'camera':
+            return self.get_sensor_data_by_camera(idx)
 
     def __len__(self):
-        return len(self.db['frames'])
+        if self.mode == 'sample':
+            return len(self.db['frames'])
+        elif self.mode == 'camera':
+            return 6 * len(self.db['frames'])
 
     ##--------------------------------------------------------------------------
-    def get_sensor_data(self, idx: int) -> dict:
+    def get_sensor_data_by_camera(self, idx:int) -> dict:
+        frame = self.get_sensor_data_by_sample(idx)
+        ret_frame = {
+            'camera': frame['camera'],
+            'radar': [],
+            'lidar': [],
+            'annotations': []
+        }
+        for relevant_camera in frame['camera']:
+            if 'lidar' in self.sensors_to_return:
+                lidar_pc = self.filter_points(frame['lidar']['points'].points, relevant_camera['cs_record'])
+                ret_frame['lidar'].append(lidar_pc)
+
+            if 'radar' in self.sensors_to_return:
+                radar_pc = self.filter_points(frame['radar']['points'].points, relevant_camera['cs_record'])
+                ret_frame['radar'].append(radar_pc)
+
+            annotation = self.filter_anns(frame['annotations'], relevant_camera['cs_record'])
+
+            ret_frame['annotations'].append(annotation)
+        return ret_frame
+
+    ##--------------------------------------------------------------------------
+    def get_sensor_data_by_sample(self, idx: int) -> dict:
         """
         Returns sensor data in vehicle or global coordinates
         :param idx: id of the dataset's split to retrieve
         :return sensor_data: dictionary containing all sensor data for that frame
         """
-
         frame = self.db['frames'][idx]
         sensor_data = {
             "lidar": {
@@ -334,3 +370,35 @@ class NuscenesDataset(NuscenesDB):
             pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
 
         return pc
+
+    @staticmethod
+    def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
+        """
+        :param points: pointcloud or box in the coordinate system of the camera
+        :param cam_cs_record: calibrated sensor record of the camera to filter to
+        :param img_shape: shape of the image (width, height)
+        """
+        if isinstance(points_orig, np.ndarray):
+            points = NuscenesDataset.pc_to_sensor(points_orig, cam_cs_record)
+            viewed_points = view_points(points[:3, :], np.array(cam_cs_record['camera_intrinsic']), normalize=True)
+            visible = np.logical_and(viewed_points[0, :] > 0, viewed_points[0, :] < img_shape[0])
+            visible = np.logical_and(visible, viewed_points[1, :] < img_shape[1])
+            visible = np.logical_and(visible, viewed_points[1, :] > 0)
+            visible = np.logical_and(visible, points[2, :] > 1)
+            in_front = points[2, :] > 0.1  # True if a corner is at least 0.1 meter in front of the camera.
+            isVisible = np.logical_and(visible, in_front)
+            points_orig = points_orig.T[isVisible]
+            points_orig = points_orig.T
+            return points_orig
+        else:
+            raise TypeError('{} is not able to be filtered'.format(type(points)))
+
+    @staticmethod
+    def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900)):
+        assert isinstance(annotations_orig[0], Box)
+        annotations = NuscenesDataset.pc_to_sensor(annotations_orig, cam_cs_record)
+        visible_boxes = []
+        for i, box in enumerate(annotations):
+            if box_in_image(box, np.array(cam_cs_record['camera_intrinsic']), img_shape):
+                visible_boxes.append(annotations_orig[i])
+        return visible_boxes
