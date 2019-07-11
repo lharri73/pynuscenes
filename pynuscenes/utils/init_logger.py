@@ -1,11 +1,12 @@
 ################################################################################
 ## Date Created  : Sat Jun 15 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 10th, 2019                                            ##
+## Last Modified : July 11th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
 import logging
+import time
 
 def initialize_logger(name, verbose=False):
     ## Set up logger
@@ -35,7 +36,11 @@ class ColorFormatter(logging.Formatter):
         logging.Formatter.__init__(self, fmt=fmt, datefmt=None, style='%')
     
     def format(self, record):
-        prefix = '## {fileName}:{line} '.format(
+
+        curTime = time.localtime()
+        curTime = time.strftime("%m/%d/%Y %X", curTime)
+        prefix = '## {time} {fileName}:{line} '.format(
+            time=curTime,
             fileName=record.filename,
             line=record.lineno
         )
