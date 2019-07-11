@@ -1,7 +1,8 @@
- ###############################################################################
-## Date Created  : Fri Jun 14 2019                                            ##
+#!/usr/bin/env python3
+################################################################################
+## Date Created  : July 6th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Sat Jun 15 2019                                            ##
+## Last Modified : July 10th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -17,6 +18,7 @@ import multiprocessing
 import os
 import logging
 from .utils import constants, init_logger
+import time
 
 class NuscenesDB(object):
     """
@@ -77,7 +79,8 @@ class NuscenesDB(object):
         Create an image databaser (db) for the NuScnenes dataset and save it
         to a pickle file
         """
-        self.logger.info('Creating db for {} {} dataset ...'.format(self.nusc_version, self.split))
+        startTime = time.time()
+        self.logger.info('Creating DATABASE for {} {} dataset ...'.format(self.nusc_version, self.split))
         scenes_list = self._split_scenes()
         frames = self._get_frames(scenes_list)
         metadata = {"version": self.nusc_version}
@@ -85,9 +88,10 @@ class NuscenesDB(object):
                     'frames': frames,
                     'metadata': metadata
                     }
+        self.logger.info('Done in %.3fs' % (time.time()-startTime))
+        self.logger.info('Number of samples: {}'.format(str(len(frames))))
         ## if an output directory is specified, write to a pkl file
         if out_dir is not None:
-            self.logger.info('Number of samples: {}'.format(str(len(test_nusc_frames))))
             self.logger.info('Writing pickle file at {}'.format(db_filename))
             
             out_dir = os.path.join(out_dir, self.nusc_version)

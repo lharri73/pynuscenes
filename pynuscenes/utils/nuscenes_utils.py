@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 ################################################################################
 ## Date Created  : Fri Jun 14 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Fri Jun 14 2019                                            ##
+## Last Modified : July 9th, 2019                                             ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -11,9 +12,6 @@ from pyquaternion import Quaternion
 from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.utils.geometry_utils import view_points
 from shapely.geometry import LineString
-
-#TODO: remove me
-import time
 
 def bbox_to_corners(bboxes):
     """
@@ -45,9 +43,7 @@ def bbox_to_corners(bboxes):
     corners[:,:,0] += x
     corners[:,:,1] += y
     corners[:,:,2] += z
-    # corners[0, :] = corners[0, :] + x
-    # corners[1, :] = corners[1, :] + y
-    # corners[2, :] = corners[2, :] + z
+
     corners = np.swapaxes(corners, 1,2)
     return corners
 

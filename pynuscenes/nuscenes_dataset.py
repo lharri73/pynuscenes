@@ -2,7 +2,7 @@
 ################################################################################
 ## Date Created  : July 9th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 9th, 2019                                             ##
+## Last Modified : July 10th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -22,6 +22,7 @@ from nuscenes.utils.geometry_utils import view_points, box_in_image
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
 from .utils import init_logger
+import time
 import copy
 
 class NuscenesDataset(NuscenesDB):
@@ -33,8 +34,9 @@ class NuscenesDataset(NuscenesDB):
                  coordinates='vehicle',
                  nsweeps_lidar=1,
                  nsweeps_radar=1, 
-                 sensors_to_return=['lidar','radar','camera', 'image'],
-                 mode='sample') -> None:
+                 sensors_to_return=_C.NUSCENES_RETURNS,
+                 mode='sample',
+                 verbose=False) -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -47,6 +49,7 @@ class NuscenesDataset(NuscenesDB):
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
         :param mode: 'camera' or 'sample'
         """
+        self.offset = 2615
 
         self.available_coordinates = ['vehicle', 'global']
         assert coordinates in self.available_coordinates, \
@@ -58,7 +61,7 @@ class NuscenesDataset(NuscenesDB):
 
         self.mode = mode
         self.sensors_to_return = sensors_to_return
-        self.logger = init_logger.initialize_logger('pynuscenes')
+        self.logger = init_logger.initialize_logger('pynuscenes', verbose=verbose)
         self.coordinates = coordinates
         self.nusc_path = nusc_path
         self.split = split
@@ -66,10 +69,14 @@ class NuscenesDataset(NuscenesDB):
         self.nsweeps_lidar = nsweeps_lidar
         self.nsweeps_radar = nsweeps_radar
         
+        mode_diff = set(_C.NUSCENES_RETURNS) - set(sensors_to_return)
+        if len(mode_diff) != 0:
+            self.logger.warning('NOT reading {}'.format(mode_diff))
+        
         self.radar_min_distance = 1
         self.lidar_min_distance = 1
         
-        super().__init__(nusc_path, nusc_version, split)
+        super().__init__(nusc_path, nusc_version, split, verbose=verbose)
         
         if db_file is None:
             super().generate_db()
@@ -80,19 +87,25 @@ class NuscenesDataset(NuscenesDB):
             self.logger.warning('{} does not exist, not saving'.format(db_file))
             super().generate_db()
 
+
+        if self.offset != 0:
+            self.logger.error('NOT starting from beginning of dataset. Starting at {}'.format(self.offset))
+
     def __getitem__(self, idx):
+        idx += self.offset
         self.logger.debug('retrieveing id: {}'.format(idx))
+        startTime = time.time()
         assert idx <= len(self), 'Requested dataset index out of range'
         if self.mode == 'sample':
+            self.logger.debug('Done in %.1fs' % float(time.time()-startTime))
             return self.get_sensor_data_by_sample(idx)
         elif self.mode == 'camera':
+            self.logger.debug('Done in %.3fs' % float(time.time()-startTime))
             return self.get_sensor_data_by_camera(idx)
-
     def __len__(self):
-        if self.mode == 'sample':
-            return len(self.db['frames'])
-        elif self.mode == 'camera':
-            return 6 * len(self.db['frames'])
+        length = len(self.db['frames']) - self.offset
+        self.logger.debug('Called Length. Returning {}'.format(length))
+        return length
 
     ##--------------------------------------------------------------------------
     def get_sensor_data_by_camera(self, idx:int) -> dict:
@@ -101,19 +114,27 @@ class NuscenesDataset(NuscenesDB):
             'camera': frame['camera'],
             'radar': [],
             'lidar': [],
-            'annotations': []
+            'annotations': [],
+            'ego_pose': frame['ego_pose'],
+            'cam_id': [],
+            'id': frame['id']
         }
-        for relevant_camera in frame['camera']:
+        for i, relevant_camera in enumerate(frame['camera']):
+            
+            ret_frame['cam_id'].append(idx*6+i)
+
             if 'lidar' in self.sensors_to_return:
                 lidar_pc = self.filter_points(frame['lidar']['points'].points, relevant_camera['cs_record'])
+                self.logger.debug('Filtered LIDAR points: {}'.format(lidar_pc.shape))
                 ret_frame['lidar'].append(lidar_pc)
 
             if 'radar' in self.sensors_to_return:
                 radar_pc = self.filter_points(frame['radar']['points'].points, relevant_camera['cs_record'])
+                self.logger.debug('Filtered RADAR points: {}'.format(radar_pc.shape))
                 ret_frame['radar'].append(radar_pc)
 
-            annotation = self.filter_anns(frame['annotations'], relevant_camera['cs_record'])
-
+            annotation = self.filter_anns(frame['annotations'], relevant_camera['cs_record'], img=relevant_camera['image'])
+            self.logger.debug('Filtered annotation length: {}'.format(len(annotation)))
             ret_frame['annotations'].append(annotation)
         return ret_frame
 
@@ -177,6 +198,7 @@ class NuscenesDataset(NuscenesDB):
        ## Get annotations
         sensor_data["annotations"] = self._get_annotations(frame, pose_rec)
         # print('nuscenes dataset', res['lidar']['points'].points.shape)
+        self.logger.debug('Annotation Length: {}'.format(len(sensor_data['annotations'])))
         return sensor_data
 
     ##--------------------------------------------------------------------------
@@ -348,7 +370,6 @@ class NuscenesDataset(NuscenesDB):
             pc = pc_orig
         
         if isinstance(pc, PointCloud):
-            
             if global_coordinates:
                 ## Transform from global to vehicle
                 pc.translate(np.array(-np.array(ego_pose['translation'])))
@@ -358,7 +379,6 @@ class NuscenesDataset(NuscenesDB):
             pc.translate(-np.array(cs_record['translation']))
             pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
         elif isinstance(pc, np.ndarray):
-            
             if global_coordinates:
                 ## Transform from global to vehicle
                 for i in range(3):
@@ -368,6 +388,25 @@ class NuscenesDataset(NuscenesDB):
             for i in range(3):
                 pc[i, :] = pc[i, :] - np.array(cs_record['translation'])[i]
             pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
+        
+        elif isinstance(pc, list):
+            if len(pc) == 0:
+                return []
+            if isinstance(pc[0], Box):
+                new_list = []
+                for box in pc:
+                    if global_coordinates:
+                        ## Transform from global to vehicle
+                        box.translate(-np.array(ego_pose['translation']))
+                        box.rotate(Quaternion(ego_pose['rotation']).inverse)
+
+                    ## Transform from vehicle to sensor
+                    box.translate(-np.array(cs_record['translation']))
+                    box.rotate(Quaternion(cs_record['rotation']).inverse)
+                    new_list.append(box)
+                return new_list
+        else:
+            raise TypeError('cannot filter object with type {}'.format(type(pc)))
 
         return pc
 
@@ -394,11 +433,16 @@ class NuscenesDataset(NuscenesDB):
             raise TypeError('{} is not able to be filtered'.format(type(points)))
 
     @staticmethod
-    def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900)):
+    def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), img=np.zeros((900,1600,3))):
+        if len(annotations_orig) == 0:
+            return []
         assert isinstance(annotations_orig[0], Box)
         annotations = NuscenesDataset.pc_to_sensor(annotations_orig, cam_cs_record)
         visible_boxes = []
         for i, box in enumerate(annotations):
             if box_in_image(box, np.array(cam_cs_record['camera_intrinsic']), img_shape):
+                # box.render_cv2(img, view=np.array(cam_cs_record['camera_intrinsic']), normalize=True)
+                # cv2.imshow('image', img)
+                # cv2.waitKey(0)
                 visible_boxes.append(annotations_orig[i])
         return visible_boxes

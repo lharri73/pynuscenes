@@ -24,10 +24,10 @@ def initialize_logger(name, verbose=False):
     return logger
 
 class ColorFormatter(logging.Formatter):
-    DEBUG     = "\033[1;32mDEBUG\033[32;49m   :: "
-    INFO     = "\033[34;1mINFO\033[0;34;49m    :: "
-    WARN     = "\033[1;33mWARNING\033[0;33;49m :: "
-    ERROR    = "\033[103;31mERROR\033[31;49m   :: "
+    DEBUG     = "\033[1;32mDEBUG\033[0;32;49m:: "
+    INFO     = "\033[34;1mINFO\033[0;34;49m:: "
+    WARN     = "\033[1;33mWARNING\033[0;33;49m:: "
+    ERROR    = "\033[103;31mERROR\033[31;49m:: "
     CRITICAL = "\033[41;97mCRITICAL\033[91;49;1m:: "
 
     RESET = "\033[0m"
@@ -35,7 +35,7 @@ class ColorFormatter(logging.Formatter):
         logging.Formatter.__init__(self, fmt=fmt, datefmt=None, style='%')
     
     def format(self, record):
-        prefix = '@{fileName}:{line} '.format(
+        prefix = '## {fileName}:{line} '.format(
             fileName=record.filename,
             line=record.lineno
         )
