@@ -49,7 +49,7 @@ class NuscenesDataset(NuscenesDB):
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
         :param mode: 'camera' or 'sample'
         """
-        self.offset = 2615
+        self.offset = 0
 
         self.available_coordinates = ['vehicle', 'global']
         assert coordinates in self.available_coordinates, \
