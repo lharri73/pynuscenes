@@ -2,7 +2,7 @@
 ################################################################################
 ## Date Created  : July 6th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 10th, 2019                                            ##
+## Last Modified : July 12th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -17,7 +17,8 @@ from multiprocessing import RLock, Pool, freeze_support
 import multiprocessing
 import os
 import logging
-from .utils import constants, init_logger
+from .utils import constants
+from.common_utils import init_logger
 import time
 
 class NuscenesDB(object):
