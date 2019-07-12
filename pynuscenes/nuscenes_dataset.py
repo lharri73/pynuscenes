@@ -2,7 +2,7 @@
 ################################################################################
 ## Date Created  : July 9th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 10th, 2019                                            ##
+## Last Modified : July 12th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -21,7 +21,7 @@ from nuscenes.utils.geometry_utils import view_points, box_in_image
 
 from .nuscenes_db import NuscenesDB
 from .utils import constants as _C
-from .utils import init_logger
+from .common_utils import init_logger
 import time
 import copy
 
