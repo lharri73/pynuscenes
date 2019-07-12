@@ -154,6 +154,7 @@ class NuscenesDataset(NuscenesDB):
             },
             "camera": [{
                 "image": None,
+                "cam_path": None,
                 "camera_name": cam,
                 "cs_record": None,
                 "sweeps": []
@@ -185,9 +186,10 @@ class NuscenesDataset(NuscenesDB):
         ## Get camera data
         if 'camera' in self.sensors_to_return:
             for i, cam in enumerate(_C.CAMERAS.keys()):
-                image, cs_record = self._get_cam_data(frame['sample'][cam])
+                image, cs_record, cam_path = self._get_cam_data(frame['sample'][cam])
                 sensor_data['camera'][i]['image'] = image
                 sensor_data['camera'][i]['cs_record'] = cs_record
+                sensor_data['camera'][i]['cam_path'] = cam_path
 
         ## Get Radar data
         if 'radar' in self.sensors_to_return:
@@ -351,7 +353,7 @@ class NuscenesDataset(NuscenesDB):
             image = np.array(Image.open(io.BytesIO(image_str)))
         else:
             image = None
-        return image, cs_record
+        return image, cs_record, cam_path
     
     ##--------------------------------------------------------------------------
     @staticmethod
