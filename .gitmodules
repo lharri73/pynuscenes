@@ -1,0 +1,3 @@
+[submodule "pynuscenes/common_utils"]
+	path = pynuscenes/common_utils
+	url = https://bitbucket.org/ecocarut/common_utils.git
