@@ -407,6 +407,15 @@ class NuscenesDataset(NuscenesDB):
                     box.rotate(Quaternion(cs_record['rotation']).inverse)
                     new_list.append(box)
                 return new_list
+        elif isinstance(pc, Box):
+            if global_coordinates:
+                ## Transform from global to vehicle
+                pc.translate(-np.array(ego_pose['translation']))
+                pc.rotate(Quaternion(ego_pose['rotation']).inverse)
+
+            ## Transform from vehicle to sensor
+            pc.translate(-np.array(cs_record['translation']))
+            pc.rotate(Quaternion(cs_record['rotation']).inverse)
         else:
             raise TypeError('cannot filter object with type {}'.format(type(pc)))
 
