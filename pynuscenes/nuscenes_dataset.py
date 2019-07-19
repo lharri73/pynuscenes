@@ -36,7 +36,8 @@ class NuscenesDataset(NuscenesDB):
                  nsweeps_radar=1, 
                  sensors_to_return=_C.NUSCENES_RETURNS,
                  mode='sample',
-                 verbose=False) -> None:
+                 logging_level="INFO",
+                 logger=None) -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -48,6 +49,8 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps_radar: number of sweeps to use for the Radar
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
         :param mode: 'camera' or 'sample'
+        :param logging_level: logging level ('INFO', 'DEBUG', ...)
+        :param logger: use an existing logger
         """
         self.offset = 0
 
@@ -61,13 +64,17 @@ class NuscenesDataset(NuscenesDB):
 
         self.mode = mode
         self.sensors_to_return = sensors_to_return
-        self.logger = init_logger.initialize_logger('pynuscenes', verbose=verbose)
         self.coordinates = coordinates
         self.nusc_path = nusc_path
         self.split = split
         self.nusc_version = nusc_version
         self.nsweeps_lidar = nsweeps_lidar
         self.nsweeps_radar = nsweeps_radar
+
+        if logger is None:
+            self.logger = init_logger.initialize_logger('pynuscenes', logging_level)
+        else:
+            self.logger = logger
         
         mode_diff = set(_C.NUSCENES_RETURNS) - set(sensors_to_return)
         if len(mode_diff) != 0:
@@ -76,7 +83,8 @@ class NuscenesDataset(NuscenesDB):
         self.radar_min_distance = 1
         self.lidar_min_distance = 1
         
-        super().__init__(nusc_path, nusc_version, split, verbose=verbose)
+        super().__init__(nusc_path, nusc_version, split, 
+                         logging_level=logging_level)
         
         if db_file is None:
             super().generate_db()

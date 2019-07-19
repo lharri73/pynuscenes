@@ -33,7 +33,8 @@ class NuscenesDB(object):
                  max_cam_sweeps=6,
                  max_lidar_sweeps=10,
                  max_radar_sweeps=6,
-                 verbose=False,
+                 logging_level="INFO",
+                 logger=None,
                  nusc=None):
         """
         Image database object that holds the sample data tokens for the nuscenes dataset
@@ -42,7 +43,6 @@ class NuscenesDB(object):
         :param max_cam_sweeps: number of sweep tokens to return for each camera
         :param max_lidar_sweeps: number of sweep tokens to return for lidar
         :param max_radar_sweeps: number of sweep tokens to return for each radar
-        :param verbose: show debug information
         """
 
         self.nusc_root = nusc_root
@@ -59,17 +59,23 @@ class NuscenesDB(object):
         assert split in constants.NUSCENES_SPLITS[nusc_version], \
             "Nuscenes split ({}) is not valid for {}".format(split, nusc_version)
 
-        self.logger = init_logger.initialize_logger('pynuscenes', verbose)
+        if logger is None:
+            self.logger = init_logger.initialize_logger('pynuscenes', logging_level)
+        else:
+            self.logger = logger
+            
         if nusc is not None:
             if self.nusc.version != nusc_version:
                 self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
-                self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=verbose)
+                self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root,
+                                     verbose=True)
                 self.logger.info('Done!')
             else:
                 self.nusc = nusc
         else:
             self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
-            self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, verbose=verbose)
+            self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, 
+                                 verbose=True)
             self.logger.info('Done!')
         
         self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
