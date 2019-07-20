@@ -2,7 +2,7 @@
 ################################################################################
 ## Date Created  : July 9th, 2019                                             ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 12th, 2019                                            ##
+## Last Modified : July 20th, 2019                                            ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -26,6 +26,9 @@ import time
 import copy
 
 class NuscenesDataset(NuscenesDB):
+
+    IMG_ID_LEN = 8
+
     def __init__(self, 
                  nusc_path, 
                  nusc_version='v1.0-mini', 
@@ -124,12 +127,12 @@ class NuscenesDataset(NuscenesDB):
             'lidar': [],
             'annotations': [],
             'ego_pose': frame['ego_pose'],
-            'cam_id': [],
+            'img_id': [],
             'id': frame['id']
         }
         for i, relevant_camera in enumerate(frame['camera']):
             
-            ret_frame['cam_id'].append(idx*6+i)
+            ret_frame['img_id'].append(str(idx*6+i).zfill(self.IMG_ID_LEN))
 
             if 'lidar' in self.sensors_to_return:
                 lidar_pc = self.filter_points(frame['lidar']['points'].points, relevant_camera['cs_record'])
