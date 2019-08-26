@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Thu Jun 13 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : Sat Jun 26 2019                                            ##
+## Last Modified : August 26th, 2019                                          ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -82,7 +82,7 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     image = _arrange_images(image_list)
     cv2.imshow('images', image)
     cv2.waitKey(1)
-    mlab.show(stop=True)
+    mlab.show(1)
 
     return fig
 
