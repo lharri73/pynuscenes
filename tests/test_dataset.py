@@ -14,35 +14,31 @@ from pynuscenes.utils.visualize import show_sample_data
 def test_dataset():
     dataset_location = '../../../data/datasets/nuscenes'
     fig = None
+    
     ## test vehicle coordinates
-    dataset = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
-                                        nusc_version='v1.0-trainval', 
-                                        split='train',
+    mini_dataset_vehicle = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
+                                        nusc_version='v1.0-mini', 
+                                        split='mini_train',
                                         db_file=None,
                                         coordinates='vehicle',
-                                        nsweeps_lidar=5,
-                                        nsweeps_radar=5,
-                                        verbose=True)    
-    for sample in tqdm(dataset):
-        pass
-        # fig = show_sample_data(dataset[30], coordinates='vehicle', fig = fig)
-        # input('press enter to continue')
+                                        nsweeps_lidar=1,
+                                        nsweeps_radar=1)    
+    for sample in tqdm(mini_dataset_vehicle):
+        fig = show_sample_data(sample, coordinates='vehicle', fig = fig)
+        input('press enter to continue')
+    
     ## test global coordinates
-
-    dataset = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
+    mini_dataset_global = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
                                         nusc_version='v1.0-mini', 
                                         split='mini_train',
                                         db_file=None,
                                         coordinates='global',
                                         nsweeps_lidar=1,
-                                        nsweeps_radar=1,
-                                        verbose=True)    
-    for sample in tqdm(dataset):
-        print(sample)
-        print('here')
+                                        nsweeps_radar=1)  
+    for sample in tqdm(mini_dataset_global):
         fig = show_sample_data(sample, coordinates='global', fig=fig)
         input('press enter to continue')
 
-
+##------------------------------------------------------------------------------
 if __name__ == "__main__":
     test_dataset()

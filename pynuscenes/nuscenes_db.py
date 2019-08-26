@@ -37,9 +37,11 @@ class NuscenesDB(object):
                  logger=None,
                  nusc=None):
         """
-        Image database object that holds the sample data tokens for the nuscenes dataset
+        Image database object that holds the sample data tokens for the nuscenes
+        dataset.
         :param root_path: location of the nuscenes dataset
-        :param nusc_version: the version of the dataset to use ('v1.0-trainval', 'v1.0-test', 'v1.0-mini')
+        :param nusc_version: the version of the dataset to use ('v1.0-trainval', 
+                             'v1.0-test', 'v1.0-mini')
         :param max_cam_sweeps: number of sweep tokens to return for each camera
         :param max_lidar_sweeps: number of sweep tokens to return for lidar
         :param max_radar_sweeps: number of sweep tokens to return for each radar
@@ -69,14 +71,12 @@ class NuscenesDB(object):
                 self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
                 self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root,
                                      verbose=True)
-                self.logger.info('Done!')
             else:
                 self.nusc = nusc
         else:
             self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
             self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, 
                                  verbose=True)
-            self.logger.info('Done!')
         
         self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
 
@@ -96,7 +96,7 @@ class NuscenesDB(object):
                     'metadata': metadata
                     }
         self.logger.info('Done in %.3fs' % (time.time()-startTime))
-        self.logger.info('Number of samples: {}'.format(str(len(frames))))
+        self.logger.info('Number of samples in split: {}'.format(str(len(frames))))
         ## if an output directory is specified, write to a pkl file
         if out_dir is not None:
             self.logger.info('Writing pickle file at {}'.format(db_filename))
@@ -119,7 +119,8 @@ class NuscenesDB(object):
             if scene['name'] in scene_split_names[self.split]:
                 scenes_list.append(scene['token'])
 
-        self.logger.debug('{}: {} scenes'.format(self.nusc_version, str(len(scenes_list))))
+        self.logger.debug('{}: {} scenes'.format(self.nusc_version, 
+                          str(len(scenes_list))))
 
         return scenes_list
     ##------------------------------------------------------------------------------
@@ -186,13 +187,15 @@ class NuscenesDB(object):
     ##------------------------------------------------------------------------------
     def _get_sweeps(self, sweep_sensor_records) -> dict:
         """
-        :param sweep_sensor_records: list of sample data records for the sensors to return sweeps for
+        :param sweep_sensor_records: list of sample data records for the sensors 
+        to return sweeps for.
         :return: dictionary of lists
             key is the sensor name
             value is the list sweep tokens
         """
         sweep = {x: '' for x in self.SENSOR_NAMES}
-        lidar_sweeps = self._get_previous_sensor_sweeps(sweep_sensor_records['LIDAR_TOP'], self.max_lidar_sweeps)
+        lidar_sweeps = self._get_previous_sensor_sweeps(sweep_sensor_records['LIDAR_TOP'], 
+                                                        self.max_lidar_sweeps)
 
         ## if the LIDAR has no previous sweeps, we assume this is the first sample
         if lidar_sweeps == []:
@@ -201,11 +204,13 @@ class NuscenesDB(object):
         sweep.update({'LIDAR_TOP': lidar_sweeps})
 
         for cam in constants.CAMERAS.keys():
-            cam_sweeps = {cam: self._get_previous_sensor_sweeps(sweep_sensor_records[cam], self.max_cam_sweeps)}
+            cam_sweeps = {cam: self._get_previous_sensor_sweeps(sweep_sensor_records[cam], 
+                          self.max_cam_sweeps)}
             sweep.update({cam: cam_sweeps[cam]})
 
         for radar in constants.RADARS.keys():
-            radar_sweeps = {radar: self._get_previous_sensor_sweeps(sweep_sensor_records[radar], self.max_radar_sweeps)}
+            radar_sweeps = {radar: self._get_previous_sensor_sweeps(sweep_sensor_records[radar], 
+                            self.max_radar_sweeps)}
             sweep.update({radar: radar_sweeps[radar]})
 
         return sweep
@@ -227,8 +232,6 @@ class NuscenesDB(object):
         return sweeps
 
 ################################################################################
-
-
 
 if __name__ == "__main__":
     test_db()

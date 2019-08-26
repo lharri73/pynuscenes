@@ -17,19 +17,22 @@ import mayavi.mlab as mlab
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+
 def show_sample_data(sample, coordinates='vehicle', fig=None):
     """
     Render the data from all sensors in a single sample
     :param sample: sample dictionary returned from nuscenes_db
     """
 
-    if fig is None: fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1600, 1000))
+    if fig is None: fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
+                                      engine=None, size=(1600, 1000))
     global_coordinates = False if coordinates=='vehicle' else True
 
     ## At this point, the point clouds are in vehicle coordinates
     top_row = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT']
     btm_row = ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
-    image_list = [[], []] 
+    image_list = [[], []]
+
     for cam in top_row:
         thisSample = copy.deepcopy(sample)
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
@@ -63,8 +66,10 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         image_list[1].append(image)
 
     mlab.clf(figure=fig)
-    draw_pc(sample['lidar']['points'].points.T, fig=fig, scalar=sample['lidar']['points'].points.T[:,2])
-    draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), pts_mode='sphere', pts_scale=.5)
+    draw_pc(sample['lidar']['points'].points.T, 
+            fig=fig, scalar=sample['lidar']['points'].points.T[:,2])
+    draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), 
+            pts_mode='sphere', pts_scale=.5)
 
     corner_list = []
     box_names = []
@@ -72,16 +77,16 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         corner_list.append(np.array(box.corners()))
         box_names.append(box.name)
     corner_list = np.swapaxes(np.array(corner_list),1,2)
-
     draw_gt_boxes3d(corner_list, box_names, fig=fig)
 
     image = _arrange_images(image_list)
     cv2.imshow('images', image)
     cv2.waitKey(1)
-    mlab.show(1)
+    mlab.show(stop=True)
 
     return fig
 
+##--------------------------------------------------------------------------
 def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     """
     Arranges multiple images into a single image
@@ -91,21 +96,25 @@ def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     """
     rows = []
     for row in image_list:
-        rows.append(np.hstack((cv2.cvtColor(cv2.resize(pic, im_size), cv2.COLOR_RGB2BGR))\
-             for pic in row))
+        rows.append(np.hstack((cv2.cvtColor(cv2.resize(pic, im_size), 
+                    cv2.COLOR_RGB2BGR)) for pic in row))
     image = np.vstack((row) for row in rows)
     return image
 
-def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False, global_coords=False, ego_pose=None):
+##--------------------------------------------------------------------------
+def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False, 
+                            global_coords=False, ego_pose=None):
     """
-    Given a point sensor (lidar/radar) token and camera sample_data token, load point-cloud and map it to the image
-    plane.
+    Given a point sensor (lidar/radar) token and camera sample_data token, 
+    load point-cloud and map it to the image plane.
     :param pointsensor_token: Lidar/radar sample_data token.
     :param camera_token: Camera sample_data token.
     :return (pointcloud <np.float: 2, n)>, coloring <np.float: n>, image <Image>).
     """
     ## Transform into the camera.
-    pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record, global_coordinates=global_coords, ego_pose=ego_pose)
+    pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record, 
+                                      global_coordinates=global_coords, 
+                                      ego_pose=ego_pose)
 
     ## Grab the depths (camera frame z axis points away from the camera).
     depths = pc.points[2, :]
@@ -114,9 +123,12 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False, global_coords=Fa
     coloring = depths
 
     ## Take the actual picture (matrix multiplication with camera-matrix + renormalization).
-    points = view_points(pc.points[:3, :], np.array(cam_cs_record['camera_intrinsic']), normalize=True)
+    points = view_points(pc.points[:3, :], 
+                         np.array(cam_cs_record['camera_intrinsic']), 
+                         normalize=True)
 
-    ## Remove points that are either outside or behind the camera. Leave a margin of 1 pixel for aesthetic reasons.
+    ## Remove points that are either outside or behind the camera. 
+    # Leave a margin of 1 pixel for aesthetic reasons.
     mask = np.ones(depths.shape[0], dtype=bool)
     mask = np.logical_and(mask, depths > 0)
     mask = np.logical_and(mask, points[0, :] > 1)
@@ -132,15 +144,20 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False, global_coords=Fa
 
     return im
 
+##--------------------------------------------------------------------------
 def plot_points_on_image(image, points, coloring, radius):
     newPoint = [0,0]
     coloring = coloring * 255.0 / 20.0
     for i, point in enumerate(points):
         newPoint[0], newPoint[1] = int(point[0]), int(point[1])
-        cv2.circle(image, tuple(newPoint), radius, (int(coloring[i]),0,255-int(coloring[i])), -1)
+        cv2.circle(image, tuple(newPoint), radius, 
+                   (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image
 
-def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), line_width=1, draw_text=True, text_scale=(.5,.5,.5), color_list=None):
+##--------------------------------------------------------------------------
+def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
+                    line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
+                    color_list=None):
     '''
     Draw 3D bounding boxes
     :param gt_boxes3d: numpy array (n,8,3) for XYZs of the box corners
@@ -154,7 +171,8 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), line_wi
     :return fig: updated fig
     ''' 
     if fig is None: 
-        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1600, 1000))
+        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
+                          engine=None, size=(1600, 1000))
     if box_names is None:
         box_names = []
         for i in range(gt_boxes3d.shape[0]):
@@ -163,23 +181,31 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), line_wi
         b = gt_boxes3d[n]
         if color_list is not None:
             color = color_list[n] 
-        if draw_text: mlab.text3d(b[4,0], b[4,1], b[4,2], '%s'%name, scale=text_scale, color=color, figure=fig)
+        if draw_text: mlab.text3d(b[4,0], b[4,1], b[4,2], '%s'%name, 
+                                  scale=text_scale, color=color, figure=fig)
         for k in range(0,4):
             #http://docs.enthought.com/mayavi/mayavi/auto/mlab_helper_functions.html
             i,j=k,(k+1)%4
-            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], color=color, tube_radius=None, line_width=line_width, figure=fig)
+            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], 
+                        color=color, tube_radius=None, line_width=line_width, 
+                        figure=fig)
 
             i,j=k+4,(k+1)%4 + 4
-            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], color=color, tube_radius=None, line_width=line_width, figure=fig)
+            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], 
+                        color=color, tube_radius=None, line_width=line_width, 
+                        figure=fig)
 
             i,j=k,k+4
-            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], color=color, tube_radius=None, line_width=line_width, figure=fig)
+            mlab.plot3d([b[i,0], b[j,0]], [b[i,1], b[j,1]], [b[i,2], b[j,2]], 
+                        color=color, tube_radius=None, line_width=line_width, 
+                        figure=fig)
     #mlab.show(1)
     #mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
     return fig
 
-def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode='point', \
-    pts_color=None):
+##--------------------------------------------------------------------------
+def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, 
+            pts_mode='point', pts_color=None):
     ''' Draw lidar points
     Args:
         pc: numpy array (n,3) of XYZ
@@ -188,27 +214,32 @@ def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, pts_mode='p
     Returns:
         fig: created or used fig
     '''
-    if fig is None: fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None, engine=None, size=(1600, 1000))
+    if fig is None: fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
+                                      engine=None, size=(1600, 1000))
     if scalar is not None and pts_mode == 'point':
-        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
+        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, color=pts_color, 
+                      mode=pts_mode, colormap = 'gnuplot', 
+                      scale_factor=pts_scale, figure=fig)
     else:
-        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode, colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
+        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode,
+                      colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
     return fig
 
-def show_figure(fig):
-    plt.show(fig)
-
+##--------------------------------------------------------------------------
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     corners = bbox_to_corners(boxes)
-    img_corners = corners3d_to_image(corners, cam_cs_record, (img.shape[1], img.shape[0]))
+    img_corners = corners3d_to_image(corners, cam_cs_record, (img.shape[1], 
+                                     img.shape[0]))
     for this_box_corners in img_corners:
         img = render_cv2(img, this_box_corners)
         cv2.imshow('image', img)
         cv2.waitKey(1)
         input('wait')
 
-def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, img_corners_3d=None):
+##--------------------------------------------------------------------------
+def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, 
+                          img_corners_3d=None):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # corners = bbox_to_corners(boxes)
     # img_corners = corners3d_to_image(corners, cam_cs_record, (image.shape[1], image.shape[0]))
@@ -217,11 +248,14 @@ def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, img_corners_3d=N
         img = copy.deepcopy(image)
         if img_corners_3d is not None:
             img = render_cv2(img, img_corners_3d[i])
-        cv2.rectangle(img, (int(this_box_corners[0]), int(this_box_corners[1])), (int(this_box_corners[2]), int(this_box_corners[3])), (0,255,0), 2)
+        cv2.rectangle(img, (int(this_box_corners[0]), int(this_box_corners[1])), 
+                        (int(this_box_corners[2]), int(this_box_corners[3])), 
+                        (0,255,0), 2)
         cv2.imshow('image', img)
         cv2.waitKey(1)
         input('wait')
 
+##--------------------------------------------------------------------------
 def render_cv2(im: np.ndarray,
                 corners: np.ndarray,
                 colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
