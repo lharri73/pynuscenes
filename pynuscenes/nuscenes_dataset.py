@@ -49,7 +49,8 @@ class NuscenesDataset(NuscenesDB):
         :param nsweeps_lidar: number of sweeps to use for the LDIAR
         :param nsweeps_radar: number of sweeps to use for the Radar
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
-        :param mode: 'camera' or 'sample'
+        :param mode: 'camera' for separate filtered pointcloud for each camera, or
+                     'sample' for one pointcloud for all cameras
         :param logging_level: logging level ('INFO', 'DEBUG', ...)
         :param logger: use an existing logger
         """
@@ -102,6 +103,10 @@ class NuscenesDataset(NuscenesDB):
     
     ##--------------------------------------------------------------------------
     def __getitem__(self, idx):
+        """
+        Get the sample with index idx from the dataset
+        """
+
         idx += self.offset
         self.logger.debug('retrieveing id: {}'.format(idx))
         startTime = time.time()
@@ -115,12 +120,22 @@ class NuscenesDataset(NuscenesDB):
     
     ##--------------------------------------------------------------------------
     def __len__(self):
+        """
+        Get the number of samples in the dataset
+        """
         length = len(self.db['frames']) - self.offset
         self.logger.debug('Called Length. Returning {}'.format(length))
         return length
 
     ##--------------------------------------------------------------------------
     def get_sensor_data_by_camera(self, idx:int) -> dict:
+        """
+        Returns sensor data in vehicle or global coordinates filtered for each
+        camera
+        :param idx: id of the dataset's split to retrieve
+        :return ret_frame: dictionary containing all sensor data for that frame
+        """
+
         frame = self.get_sensor_data_by_sample(idx)
         ret_frame = {
             'camera': frame['camera'],
@@ -194,6 +209,7 @@ class NuscenesDataset(NuscenesDB):
         sensor_data['ego_pose'] = {'translation': pose_rec['translation'], 
                                    'rotation': pose_rec['rotation']}
 
+        ## TODO: return numpy arrays for pointclouds to match get_sensor_data_by_sample
         ## Get LIDAR data
         if 'lidar' in self.sensors_to_return:
             sensor_data['lidar']['points'], sensor_data['lidar']['cs_record'] = \
