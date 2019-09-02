@@ -2,7 +2,7 @@
 ################################################################################
 ## Date Created  : Fri Jun 14 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 22nd, 2019                                            ##
+## Last Modified : September 2nd, 2019                                        ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -15,9 +15,10 @@ from shapely.geometry import LineString
 
 def bbox_to_corners(bboxes):
     """
-    Convert a 3D bounding box in [x,y,z,w,l,h,ry] format to corners
-    :param bboxes: np.ndarray <N,7>
-    :return corners: (3,8) where x,y,z is along each column
+    Convert 3D bounding boxes in [x,y,z,w,l,h,ry] format to [x,y,z] coordinates
+    of the corners
+    :param bboxes: input boxes np.ndarray <N,7>
+    :return corners: np.ndarray <N,3,8> where x,y,z is along each column
     """
     x = np.expand_dims(bboxes[:,0], 1)
     y = np.expand_dims(bboxes[:,1], 1)
@@ -47,23 +48,28 @@ def bbox_to_corners(bboxes):
     corners = np.swapaxes(corners, 1,2)
     return corners
 
+
 def quaternion_to_ry(quat: Quaternion):
     v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
     yaw = np.arctan2(v[1], v[0])
     return yaw
 
+
 def corners3d_to_image(corners, cam_cs_record, img_shape):
     """
-    :param corners: np.array <n, 3, 8>
-    :param cam_cs_record: calibrated sensor record of a camera dictionary from nuscenes dataset
-    :param img_shape [width, height]
+    Return the 2D box corners mapped to the image plane
+    :param corners (np.array <N, 3, 8>)
+    :param cam_cs_record (dict): calibrated sensor record of a camera dictionary from nuscenes dataset
+    :param img_shape (tuple<width, height>)
+    :return (ndarray<N,2,8>, list<N>)
     """
+    
     cornerList = []
     mask = []
     for box_corners in corners:
         box_corners = NuscenesDataset.pc_to_sensor(box_corners, cam_cs_record)
         this_box_corners = view_points(box_corners, np.array(cam_cs_record['camera_intrinsic']), normalize=True)[:2, :]
-
+        
         visible = np.logical_and(this_box_corners[0, :] > 0, this_box_corners[0, :] < img_shape[0])
         visible = np.logical_and(visible, this_box_corners[1, :] < img_shape[1])
         visible = np.logical_and(visible, this_box_corners[1, :] > 0)
@@ -73,6 +79,7 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
         mask.append(isVisible)
         if isVisible:
             cornerList.append(this_box_corners)
+
     return np.array(cornerList), mask
 
 def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):

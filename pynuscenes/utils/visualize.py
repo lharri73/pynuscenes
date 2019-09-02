@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Thu Jun 13 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : August 26th, 2019                                          ##
+## Last Modified : September 2nd, 2019                                        ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -206,14 +206,13 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
 ##--------------------------------------------------------------------------
 def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, 
             pts_mode='point', pts_color=None):
-    ''' Draw lidar points
-    Args:
-        pc: numpy array (n,3) of XYZ
-        color: numpy array (n) of intensity or whatever
-        fig: mayavi figure handler, if None create new one otherwise will use it
-    Returns:
-        fig: created or used fig
-    '''
+    """ 
+    Draw lidar points
+    :parma pc: numpy array (n,3) of XYZ
+    :param color: numpy array (n) of intensity or whatever
+    :param fig: mayavi figure handler, if None create new one otherwise will use it
+    :return fig: created or used fig
+    """
     if fig is None: fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
                                       engine=None, size=(1600, 1000))
     if scalar is not None and pts_mode == 'point':
@@ -227,15 +226,22 @@ def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4,
 
 ##--------------------------------------------------------------------------
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    corners = bbox_to_corners(boxes)
-    img_corners = corners3d_to_image(corners, cam_cs_record, (img.shape[1], 
+    """
+    Show 3D boxes in [x,y,z,w,l,h,ry] format on the image
+    :param boxes (ndarray<N,7>): 3D boxes 
+    :param img (ndarray<H,W,3>): image in BGR format
+    :param cam_cs_record (dict): nuscenes calibration record
+    
+    """
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    corners_3d = bbox_to_corners(boxes)
+    corners_2d, _ = corners3d_to_image(corners_3d, cam_cs_record, (img.shape[1], 
                                      img.shape[0]))
-    for this_box_corners in img_corners:
+    for this_box_corners in corners_2d:
         img = render_cv2(img, this_box_corners)
         cv2.imshow('image', img)
         cv2.waitKey(1)
-        input('wait')
+        # input('wait')
 
 ##--------------------------------------------------------------------------
 def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, 
@@ -263,6 +269,7 @@ def render_cv2(im: np.ndarray,
     """
     Renders box using OpenCV2.
     :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
+    :param corners: 
     :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
     :param linewidth: Linewidth for plot.
     """
