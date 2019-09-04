@@ -1,7 +1,7 @@
 ################################################################################
 ## Date Created  : Thu Jun 13 2019                                            ##
 ## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : September 2nd, 2019                                        ##
+## Last Modified : September 4th, 2019                                        ##
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
@@ -241,15 +241,18 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
         img = render_cv2(img, this_box_corners)
         cv2.imshow('image', img)
         cv2.waitKey(1)
-        # input('wait')
 
 ##--------------------------------------------------------------------------
-def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record, 
+def show_2dBoxes_on_image(img_corners_2d, image, 
                           img_corners_3d=None):
+    """
+    Show 2D boxes in [xyxy] format on the image
+    :param img_corners_2d (list): list of 2D boxes 
+    :param img (ndarray<H,W,3>): image in BGR format
+    :param img_corners_3d (ndarray<N,7>): Optional 3D boxes
+    
+    """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # corners = bbox_to_corners(boxes)
-    # img_corners = corners3d_to_image(corners, cam_cs_record, (image.shape[1], image.shape[0]))
-    # img_corners_2d = box_corners_to_2dBox(img_corners, (image.shape[1], image.shape[0]), mode='xyxy')
     for i, this_box_corners in enumerate(img_corners_2d):
         img = copy.deepcopy(image)
         if img_corners_3d is not None:
@@ -258,8 +261,10 @@ def show_2dBoxes_on_image(img_corners_2d, image, cam_cs_record,
                         (int(this_box_corners[2]), int(this_box_corners[3])), 
                         (0,255,0), 2)
         cv2.imshow('image', img)
-        cv2.waitKey(1)
-        input('wait')
+        # cv2.waitKey(1)
+        k = cv2.waitKey(0)
+        if  k==32:    # Space key to continue
+            continue
 
 ##--------------------------------------------------------------------------
 def render_cv2(im: np.ndarray,
