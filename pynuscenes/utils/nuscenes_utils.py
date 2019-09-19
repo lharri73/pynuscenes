@@ -9,7 +9,7 @@
 import numpy as np
 import math
 from pyquaternion import Quaternion
-from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
+from pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.utils.geometry_utils import view_points
 from shapely.geometry import LineString
 

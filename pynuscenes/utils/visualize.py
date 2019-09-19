@@ -6,10 +6,10 @@
 ################################################################################
 
 import cv2
-from nuscenes_dataset.pynuscenes.utils import constants as _C
+from pynuscenes.utils import constants as _C
 import numpy as np
-from nuscenes_dataset.pynuscenes.nuscenes_dataset import NuscenesDataset
-from nuscenes_dataset.pynuscenes.utils.nuscenes_utils import bbox_to_corners, corners3d_to_image, box_corners_to_2dBox
+from pynuscenes.nuscenes_dataset import NuscenesDataset
+from pynuscenes.utils.nuscenes_utils import bbox_to_corners, corners3d_to_image, box_corners_to_2dBox
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy

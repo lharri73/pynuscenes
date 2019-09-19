@@ -17,9 +17,9 @@ from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, P
 from PIL import Image
 from pyquaternion import Quaternion
 from nuscenes.utils.geometry_utils import view_points, box_in_image
-from .nuscenes_db import NuscenesDB
-from .utils import constants as _C
-from .common_utils import init_logger
+from pynuscenes.nuscenes_db import NuscenesDB
+from pynuscenes.utils import constants as _C
+from pynuscenes.utils import logging
 import time
 import copy
 
@@ -74,7 +74,7 @@ class NuscenesDataset(NuscenesDB):
         self.nsweeps_radar = nsweeps_radar
 
         if logger is None:
-            self.logger = init_logger.initialize_logger('pynuscenes', logging_level)
+            self.logger = logging.initialize_logger('pynuscenes', logging_level)
         else:
             self.logger = logger
         

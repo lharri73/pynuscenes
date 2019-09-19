@@ -17,8 +17,8 @@ from multiprocessing import RLock, Pool, freeze_support
 import multiprocessing
 import os
 import logging
-from .utils import constants
-from.common_utils import init_logger
+from pynuscenes.utils import constants
+from pynuscenes.utils import logging
 import time
 
 class NuscenesDB(object):
@@ -62,7 +62,7 @@ class NuscenesDB(object):
             "Nuscenes split ({}) is not valid for {}".format(split, nusc_version)
 
         if logger is None:
-            self.logger = init_logger.initialize_logger('pynuscenes', logging_level)
+            self.logger = logging.initialize_logger('pynuscenes', logging_level)
         else:
             self.logger = logger
             

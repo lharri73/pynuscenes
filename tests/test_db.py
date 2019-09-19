@@ -5,14 +5,16 @@
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
-from context import pynuscenes
+import context 
+from pynuscenes.utils import constants
+from pynuscenes.nuscenes_db import NuscenesDB
 import os
 import pickle
 import logging
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_location', type=str, default='../data/datasets/nuscenes')
+parser.add_argument('--data_location', type=str, default='../data/nuscenes')
 parser.add_argument('--versions')
 
 FLAGS = parser.parse_args()
@@ -22,10 +24,10 @@ def test_nuscenes_db():
     root = FLAGS.data_location
     nusc = None
     passed = True
-    for nuscenes_version in pynuscenes.utils.constants.NUSCENES_SPLITS.keys():
+    for nuscenes_version in ['v1.0-mini']:
         num_samples = 0
-        for split in pynuscenes.utils.constants.NUSCENES_SPLITS[nuscenes_version]:
-            nuscenes_db = pynuscenes.NuscenesDB(root, nusc_version=nuscenes_version, split=split, nusc=nusc)
+        for split in constants.NUSCENES_SPLITS[nuscenes_version]:
+            nuscenes_db = NuscenesDB(root, nusc_version=nuscenes_version, split=split, nusc=nusc)
             nuscenes_db.generate_db()
             num_samples += len(nuscenes_db.db['frames'])
 

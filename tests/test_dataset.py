@@ -5,18 +5,19 @@
 ## Copyright (c) 2019                                                         ##
 ################################################################################
 
-from context import pynuscenes
+import context
+from pynuscenes.nuscenes_dataset import NuscenesDataset
 import os
 import logging
 from tqdm import tqdm
 from pynuscenes.utils.visualize import show_sample_data
 
 def test_dataset():
-    dataset_location = '../../../data/datasets/nuscenes'
+    dataset_location = '../data/nuscenes'
     fig = None
     
     ## test vehicle coordinates
-    mini_dataset_vehicle = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
+    mini_dataset_vehicle = NuscenesDataset(nusc_path=dataset_location, 
                                         nusc_version='v1.0-mini', 
                                         split='mini_train',
                                         db_file=None,
@@ -28,7 +29,7 @@ def test_dataset():
         input('press enter to continue')
     
     ## test global coordinates
-    mini_dataset_global = pynuscenes.NuscenesDataset(nusc_path=dataset_location, 
+    mini_dataset_global = NuscenesDataset(nusc_path=dataset_location, 
                                         nusc_version='v1.0-mini', 
                                         split='mini_train',
                                         db_file=None,
