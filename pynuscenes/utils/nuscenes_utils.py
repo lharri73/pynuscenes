@@ -171,7 +171,7 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
     :param wlh_factor: <float>. Multiply w, l, h by a factor to inflate or deflate the box.
     :return: <np.float: 2, 4>. Corners of the 2D box
     """
-    box = copy.deepcopy(box)
+    # box = copy.deepcopy(box)
     # corners = np.array([corner for corner in box.corners().T if corner[2] > 0]).T
     # if len(corners) == 0:
     #     return None
