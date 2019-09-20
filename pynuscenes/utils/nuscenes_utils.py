@@ -12,6 +12,7 @@ from pyquaternion import Quaternion
 from pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.utils.geometry_utils import view_points
 from shapely.geometry import LineString
+from pynuscenes.utils import constants as NS_C
 
 
 def bbox_to_corners(bboxes):

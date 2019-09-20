@@ -14,8 +14,7 @@ NUSCENES_SPLITS = {
 NUSCENES_RETURNS = [
         'lidar',
         'radar',
-        'camera',
-        'image']
+        'camera']
 
 CAMERAS = {'CAM_FRONT_LEFT':  0,
            'CAM_FRONT_RIGHT': 1,
