@@ -140,7 +140,6 @@ class NuscenesDataset(NuscenesDB):
             'img_id': [],
             'id': frame['id']
         }
-        n_anns = 0
         for i, relevant_camera in enumerate(frame['camera']):
             self.logger.debug('Processing camera: {}'.format(relevant_camera['camera_name']))
             
@@ -395,7 +394,7 @@ class NuscenesDataset(NuscenesDB):
     def pc_to_sensor(pc_orig, cs_record, global_coordinates=False, 
                      ego_pose=None):
         """
-        Tramsform the iput point cloud from global/vehicle coordinates to
+        Tramsform the input point cloud from global/vehicle coordinates to
         sensor coordinates
         """
         assert pc_orig is not None, 'Pointcloud cannot be None. Nothing to translate'
@@ -413,6 +412,7 @@ class NuscenesDataset(NuscenesDB):
             ## Transform from vehicle to sensor
             pc.translate(-np.array(cs_record['translation']))
             pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
+        
         elif isinstance(pc, np.ndarray):
             if global_coordinates:
                 ## Transform from global to vehicle
@@ -440,6 +440,7 @@ class NuscenesDataset(NuscenesDB):
                     box.rotate(Quaternion(cs_record['rotation']).inverse)
                     new_list.append(box)
                 return new_list
+        
         elif isinstance(pc, Box):
             if global_coordinates:
                 ## Transform from global to vehicle

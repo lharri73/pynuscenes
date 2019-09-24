@@ -56,10 +56,19 @@ DETECTION_ID = {'car': 1,
                 'motorcycle': 7, 
                 'bicycle': 8,
                 'traffic_cone': 9,
-                'barrier': 10}
+                'barrier': 10
+                }
 
 DETECTION_NAMES = ['car', 'truck', 'bus', 'trailer', 'construction_vehicle', 'pedestrian', 'motorcycle', 'bicycle',
                    'traffic_cone', 'barrier']
+
+COCO_CLASSES = {'pedestrian': {'id': 1, 'category': 'person', 'supercategory': 'person'},
+                'bicycle': {'id': 2, 'category': 'bicylce', 'supercategory': 'vehicle'},
+                'car': {'id': 3, 'category': 'car', 'supercategory': 'vehicle'},
+                'motorcycle': {'id': 4, 'category': 'motorcycle', 'supercategory': 'vehicle'},
+                'bus': {'id': 6, 'category': 'bus', 'supercategory': 'vehicle'},
+                'truck': {'id': 8, 'category': 'truck', 'supercategory': 'vehicle'}
+                }
 
 PRETTY_DETECTION_NAMES = {'car': 'Car',
                           'truck': 'Truck',

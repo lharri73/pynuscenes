@@ -149,18 +149,19 @@ def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):
     return bboxes
 
 ##------------------------------------------------------------------------------
-def nuscene_cat_to_coco(name):
+def nuscene_cat_to_coco(nusc_ann_name):
 
     ## Convert nuscene categories to COCO cat, cat_ids and supercats
     try:
-        # cat = NS_C.NAMEMAPPING[name]
-        cat_id = int(NS_C.DETECTION_ID[name])
-        super_cat = name.split('.')[0]
-
+        coco_equivalent = NS_C.COCO_CLASSES[nusc_ann_name]
     except KeyError:
         return None, None, None
+    
+    coco_cat = coco_equivalent['category']
+    coco_id = coco_equivalent['id']
+    coco_supercat = coco_equivalent['supercategory']
 
-    return name, cat_id, super_cat
+    return coco_cat, coco_id, coco_supercat
 
 ##------------------------------------------------------------------------------
 def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'):
