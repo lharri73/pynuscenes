@@ -1,9 +1,3 @@
-################################################################################
-## Date Created  : Sat Jun 15 2019                                            ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 11th, 2019                                            ##
-## Copyright (c) 2019                                                         ##
-################################################################################
 
 import logging
 import time

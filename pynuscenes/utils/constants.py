@@ -1,9 +1,3 @@
-################################################################################
-## Date Created  : Fri Jun 14 2019                                            ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 10th, 2019                                            ##
-## Copyright (c) 2019                                                         ##
-################################################################################
 
 NUSCENES_SPLITS = {
                     'v1.0-trainval': ['train', 'val'],
@@ -62,12 +56,12 @@ DETECTION_ID = {'car': 1,
 DETECTION_NAMES = ['car', 'truck', 'bus', 'trailer', 'construction_vehicle', 'pedestrian', 'motorcycle', 'bicycle',
                    'traffic_cone', 'barrier']
 
-COCO_CLASSES = {'pedestrian': {'id': 1, 'category': 'person', 'supercategory': 'person'},
-                'bicycle': {'id': 2, 'category': 'bicylce', 'supercategory': 'vehicle'},
-                'car': {'id': 3, 'category': 'car', 'supercategory': 'vehicle'},
-                'motorcycle': {'id': 4, 'category': 'motorcycle', 'supercategory': 'vehicle'},
-                'bus': {'id': 6, 'category': 'bus', 'supercategory': 'vehicle'},
-                'truck': {'id': 8, 'category': 'truck', 'supercategory': 'vehicle'}
+COCO_CLASSES = {'pedestrian': {'id': 1, 'name': 'person', 'supercategory': 'person'},
+                'bicycle': {'id': 2, 'name': 'bicycle', 'supercategory': 'vehicle'},
+                'car': {'id': 3, 'name': 'car', 'supercategory': 'vehicle'},
+                'motorcycle': {'id': 4, 'name': 'motorcycle', 'supercategory': 'vehicle'},
+                'bus': {'id': 6, 'name': 'bus', 'supercategory': 'vehicle'},
+                'truck': {'id': 8, 'name': 'truck', 'supercategory': 'vehicle'}
                 }
 
 PRETTY_DETECTION_NAMES = {'car': 'Car',

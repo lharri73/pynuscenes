@@ -1,9 +1,3 @@
-################################################################################
-## Date Created  : Thu Jun 13 2019                                            ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : September 4th, 2019                                        ##
-## Copyright (c) 2019                                                         ##
-################################################################################
 
 import cv2
 from pynuscenes.utils import constants as _C
@@ -16,6 +10,7 @@ import copy
 import mayavi.mlab as mlab
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import os
 
 
 def show_sample_data(sample, coordinates='vehicle', fig=None):
@@ -244,7 +239,9 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
 
 ##--------------------------------------------------------------------------
 def show_2dBoxes_on_image(img_corners_2d, image, 
-                          img_corners_3d=None):
+                          img_corners_3d=None,
+                          out_dir=None,
+                          img_id=None):
     """
     Show 2D boxes in [xyxy] format on the image
     :param img_corners_2d (list): list of 2D boxes 
@@ -264,6 +261,10 @@ def show_2dBoxes_on_image(img_corners_2d, image,
         # cv2.waitKey(1)
         k = cv2.waitKey(0)
         if  k==32:    # Space key to continue
+            continue
+        elif k == ord('s'):
+            out_file = os.path.join(out_dir, str(img_id)+'_'+str(i)+'.jpg')
+            cv2.imwrite(out_file, img)
             continue
 
 ##--------------------------------------------------------------------------

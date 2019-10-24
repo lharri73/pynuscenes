@@ -34,8 +34,7 @@ class NuscenesDB(object):
                  max_lidar_sweeps=10,
                  max_radar_sweeps=6,
                  logging_level="INFO",
-                 logger=None,
-                 nusc=None):
+                 logger=None):
         """
         Image database object that holds the sample data tokens for the nuscenes
         dataset.
@@ -66,17 +65,11 @@ class NuscenesDB(object):
         else:
             self.logger = logger
             
-        if nusc is not None:
-            if self.nusc.version != nusc_version:
-                self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
-                self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root,
-                                     verbose=True)
-            else:
-                self.nusc = nusc
-        else:
-            self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
-            self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, 
-                                 verbose=True)
+        ## Load the NuScenes dataset
+        verbose = False if logging_level=='INFO' else True
+        self.logger.info('Loading nuscenes {} dataset'.format(nusc_version))
+        self.nusc = NuScenes(version=nusc_version, dataroot=self.nusc_root, 
+                             verbose=verbose)
         
         self.SENSOR_NAMES = [x['channel'] for x in self.nusc.sensor]
 

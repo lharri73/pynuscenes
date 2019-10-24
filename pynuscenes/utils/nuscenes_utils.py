@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-################################################################################
-## Date Created  : Fri Jun 14 2019                                            ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : September 2nd, 2019                                        ##
-## Copyright (c) 2019                                                         ##
-################################################################################
 
 import numpy as np
 import math
@@ -157,7 +150,7 @@ def nuscene_cat_to_coco(nusc_ann_name):
     except KeyError:
         return None, None, None
     
-    coco_cat = coco_equivalent['category']
+    coco_cat = coco_equivalent['name']
     coco_id = coco_equivalent['id']
     coco_supercat = coco_equivalent['supercategory']
 

@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-################################################################################
-## Date Created  : July 9th, 2019                                             ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 20th, 2019                                            ##
-## Copyright (c) 2019                                                         ##
-################################################################################
 
 import io
 import logging
