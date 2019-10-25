@@ -139,7 +139,6 @@ class KittiConverter:
             sd_record_lid = self.nusc.get('sample_data', lidar_token)
             cs_record_cam = self.nusc.get('calibrated_sensor', sd_record_cam['calibrated_sensor_token'])
             cs_record_lid = self.nusc.get('calibrated_sensor', sd_record_lid['calibrated_sensor_token'])
-
             sd_record_rad = []
             cs_record_rad = []
             for i, radar_token in enumerate(radar_tokens):
@@ -161,7 +160,7 @@ class KittiConverter:
                                           inverse=False))
 
             velo_to_cam = np.dot(ego_to_cam, lid_to_ego)
-            radar_to_cam = ego_to_cam   # Assuming Radar point are in ego coordinates
+            radar_to_cam = ego_to_cam   # Assuming Radar point are going to be in ego coordinates
 
             # Convert from KITTI to nuScenes LIDAR coordinates, where we apply velo_to_cam.
             velo_to_cam_kitti = np.dot(velo_to_cam, kitti_to_nu_lidar.transformation_matrix)
