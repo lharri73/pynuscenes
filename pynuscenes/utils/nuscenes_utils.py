@@ -1,4 +1,3 @@
-
 import numpy as np
 import math
 from pyquaternion import Quaternion

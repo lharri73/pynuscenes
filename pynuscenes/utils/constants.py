@@ -65,12 +65,13 @@ COCO_CLASSES = {'pedestrian': {'id': 1, 'name': 'person', 'supercategory': 'pers
                 }
 
 KITTI_CLASSES = {
-                'vehicle.bicycle': 'Bicyclist',
-                'vehicle.car': 'Car'
+                'vehicle.bicycle': 'Cyclist',
+                'vehicle.car': 'Car',
                 'human.pedestrian.adult': 'Pedestrian',
                 'human.pedestrian.child': 'Pedestrian',
                 'human.pedestrian.construction_worker': 'Pedestrian',
                 'human.pedestrian.police_officer': 'Pedestrian',
+                'vehicle.truck': 'Truck'
                 }
 
 PRETTY_DETECTION_NAMES = {'car': 'Car',

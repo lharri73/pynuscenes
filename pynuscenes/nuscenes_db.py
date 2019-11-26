@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-################################################################################
-## Date Created  : July 6th, 2019                                             ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : July 12th, 2019                                            ##
-## Copyright (c) 2019                                                         ##
-################################################################################
-
 from pyquaternion import Quaternion
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
