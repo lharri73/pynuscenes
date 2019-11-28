@@ -14,25 +14,22 @@ from pynuscenes.utils.visualize import show_sample_data
 
 def test_dataset():
     dataset_location = '../data/nuscenes'
-    fig = None
     
     ## test vehicle coordinates
     mini_dataset_vehicle = NuscenesDataset(nusc_path=dataset_location, 
                                         nusc_version='v1.0-mini', 
                                         split='mini_train',
-                                        db_file=None,
                                         coordinates='vehicle',
                                         nsweeps_lidar=1,
                                         nsweeps_radar=1)    
     for sample in tqdm(mini_dataset_vehicle):
-        fig = show_sample_data(sample, coordinates='vehicle', fig = fig)
+        fig = show_sample_data(sample, coordinates='vehicle')
         input('press enter to continue')
     
     ## test global coordinates
     mini_dataset_global = NuscenesDataset(nusc_path=dataset_location, 
                                         nusc_version='v1.0-mini', 
                                         split='mini_train',
-                                        db_file=None,
                                         coordinates='global',
                                         nsweeps_lidar=1,
                                         nsweeps_radar=1)  

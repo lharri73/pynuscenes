@@ -10,19 +10,21 @@ import mayavi.mlab as mlab
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
+from PIL import Image
 
 
 def show_sample_data(sample, coordinates='vehicle', fig=None):
     """
     Render the data from all sensors in a single sample
-    :param sample: sample dictionary returned from nuscenes_db
+    :param sample [dict]: sample dictionary returned from nuscenes_db
+    :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
+    :fig: An mayavi mlab figure object to display the 3D pointclouds on
     """
 
-    if fig is None: fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
-                                      engine=None, size=(1600, 1000))
-    global_coordinates = False if coordinates=='vehicle' else True
+    if fig is None:
+        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
+                          engine=None, size=(1600, 1000))
 
-    ## At this point, the point clouds are in vehicle coordinates
     top_row = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT']
     btm_row = ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
     image_list = [[], []]
@@ -32,14 +34,14 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         global_coords=global_coordinates,
+         coordinates=coordinates,
          ego_pose=thisSample['ego_pose'])
 
         image = map_pointcloud_to_image(thisSample['radar']['points'],
          image, 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         radar=True,
-         global_coords=global_coordinates,
+         radius=8,
+         coordinates=coordinates,
          ego_pose=thisSample['ego_pose'])
 
         image_list[0].append(image)
@@ -49,13 +51,13 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
          thisSample['camera'][_C.CAMERAS[cam]]['image'], 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         global_coords=global_coordinates,
+         coordinates=coordinates,
          ego_pose=thisSample['ego_pose'])
         image = map_pointcloud_to_image(thisSample['radar']['points'],
          image, 
          thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         radar=True,
-         global_coords=global_coordinates,
+         radius=8,
+         coordinates=coordinates,
          ego_pose=thisSample['ego_pose'])
         image_list[1].append(image)
 
@@ -96,27 +98,29 @@ def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     return image
 
 ##--------------------------------------------------------------------------
-def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False, 
-                            global_coords=False, ego_pose=None):
+def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle', 
+                            radius=2, ego_pose=None):
     """
-    Given a point sensor (lidar/radar) token and camera sample_data token, 
-    load point-cloud and map it to the image plane.
-    :param pointsensor_token: Lidar/radar sample_data token.
-    :param camera_token: Camera sample_data token.
-    :return (pointcloud <np.float: 2, n)>, coloring <np.float: n>, image <Image>).
+    Given a point sensor (lidar/radar) point cloud and camera image, 
+    map the point cloud to the image.
+    
+    :param pc: point cloud
+    :param im: Camera image.
+    :param cam_cs_record: Camera calibrated sensor record
+    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
+    :param radius: Radius of each plotted point in the point cloud
+    :param ego_pose: Vehicle's ego-pose if points are in 'global' coordinates
+    :return image: Camera image with mapped point cloud.
     """
     ## Transform into the camera.
-    pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record, 
-                                      global_coordinates=global_coords, 
+    pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record, coordinates=coordinates, 
                                       ego_pose=ego_pose)
 
     ## Grab the depths (camera frame z axis points away from the camera).
     depths = pc.points[2, :]
-
-    ## Retrieve the color from the depth.
     coloring = depths
 
-    ## Take the actual picture (matrix multiplication with camera-matrix + renormalization).
+    ## Take the actual picture
     points = view_points(pc.points[:3, :], 
                          np.array(cam_cs_record['camera_intrinsic']), 
                          normalize=True)
@@ -131,10 +135,13 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, radar=False,
     mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
     points = points[:, mask]
     coloring = coloring[mask]
-    if radar:
-        im = plot_points_on_image(im, points.T, coloring, 8)
-    else:
-        im = plot_points_on_image(im, points.T, coloring, 2)
+
+    im = plot_points_on_image(im, points.T, coloring, radius)
+
+    # plt.figure(figsize=(9, 16))
+    #     plt.imshow(im)
+    #     plt.scatter(points[0, :], points[1, :], c=coloring, s=dot_size)
+    #     plt.axis('off')
 
     return im
 

@@ -46,6 +46,7 @@ class NuscenesDB(object):
         self.max_radar_sweeps = max_radar_sweeps
         self.id_length = 8
         self.db = {}
+        self.sample_id = 0
         
         assert nusc_version in constants.NUSCENES_SPLITS.keys(), \
             "Nuscenes version not valid."
@@ -68,11 +69,12 @@ class NuscenesDB(object):
     ##--------------------------------------------------------------------------
     def generate_db(self, out_dir=None) -> None:
         """
-        Create an image databaser (db) for the NuScnenes dataset and save it
+        Create an image database for the NuScnenes dataset and save it
         to a pickle file
         """
         startTime = time.time()
-        self.logger.info('Creating DATABASE for {} {} dataset ...'.format(self.nusc_version, self.split))
+        self.logger.info('Creating DATABASE for {} {} dataset ...'.format( \
+                          self.nusc_version, self.split))
         scenes_list = self._split_scenes()
         frames = self._get_frames(scenes_list)
         metadata = {"version": self.nusc_version}
@@ -108,13 +110,11 @@ class NuscenesDB(object):
                           str(len(scenes_list))))
 
         return scenes_list
-    ##------------------------------------------------------------------------------
+    ##--------------------------------------------------------------------------
     def _get_frames(self, scenes_list) -> list:
         """
         returns (train_nusc_frames, val_nusc_frames) from the nuscenes dataset
         """
-        self.sample_id = 0
-
         self.logger.debug('Generating train frames')
         frames = []
         for scene in scenes_list:
@@ -150,9 +150,11 @@ class NuscenesDB(object):
             #           ...
             #           RADAR_BACK_RIGHT: token
             #          }
-            sample.update({cam: sample_sensor_records[cam]['token'] for cam in constants.CAMERAS.keys()})
+            sample.update({cam: sample_sensor_records[cam]['token'] for cam in \
+                           constants.CAMERAS.keys()})
             sample.update({'LIDAR_TOP': sample_sensor_records['LIDAR_TOP']['token']})
-            sample.update({x: sample_sensor_records[x]['token'] for x in constants.RADARS.keys()})
+            sample.update({x: sample_sensor_records[x]['token'] for x in \
+                           constants.RADARS.keys()})
 
             frame = {'sample': sample,
                      'sweeps': self._get_sweeps(sample_sensor_records),
@@ -169,7 +171,7 @@ class NuscenesDB(object):
             returnList.append(frame)
         return returnList
 
-    ##------------------------------------------------------------------------------
+    ##--------------------------------------------------------------------------
     def _get_sweeps(self, sweep_sensor_records) -> dict:
         """
         :param sweep_sensor_records: list of sample data records for the sensors 
@@ -179,8 +181,8 @@ class NuscenesDB(object):
             value is the list sweep tokens
         """
         sweep = {x: '' for x in self.SENSOR_NAMES}
-        lidar_sweeps = self._get_previous_sensor_sweeps(sweep_sensor_records['LIDAR_TOP'], 
-                                                        self.max_lidar_sweeps)
+        lidar_sweeps = self._get_previous_sensor_sweeps( \
+                        sweep_sensor_records['LIDAR_TOP'], self.max_lidar_sweeps)
 
         ## if the LIDAR has no previous sweeps, we assume this is the first sample
         if lidar_sweeps == []:
@@ -189,18 +191,18 @@ class NuscenesDB(object):
         sweep.update({'LIDAR_TOP': lidar_sweeps})
 
         for cam in constants.CAMERAS.keys():
-            cam_sweeps = {cam: self._get_previous_sensor_sweeps(sweep_sensor_records[cam], 
-                          self.max_cam_sweeps)}
+            cam_sweeps = {cam: self._get_previous_sensor_sweeps( \
+                          sweep_sensor_records[cam], self.max_cam_sweeps)}
             sweep.update({cam: cam_sweeps[cam]})
 
         for radar in constants.RADARS.keys():
-            radar_sweeps = {radar: self._get_previous_sensor_sweeps(sweep_sensor_records[radar], 
-                            self.max_radar_sweeps)}
+            radar_sweeps = {radar: self._get_previous_sensor_sweeps( \
+                            sweep_sensor_records[radar], self.max_radar_sweeps)}
             sweep.update({radar: radar_sweeps[radar]})
 
         return sweep
 
-    ##------------------------------------------------------------------------------
+    ##--------------------------------------------------------------------------
     def _get_previous_sensor_sweeps(self, sample_data, num_sweeps) -> list: 
         """
         Gets the previous sweeps for one senser

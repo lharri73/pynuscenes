@@ -23,7 +23,6 @@ class NuscenesDataset(NuscenesDB):
                  nusc_path, 
                  nusc_version='v1.0-mini', 
                  split='mini_train',
-                 db_file=None, 
                  coordinates='vehicle',
                  nsweeps_lidar=1,
                  nsweeps_radar=1, 
@@ -37,7 +36,6 @@ class NuscenesDataset(NuscenesDB):
         :param nusc_path: path to the nuscenes rooth
         :param nusc_version: nuscenes dataset version
         :param split: split in the dataset to use
-        :param db_file: location of the db pkl file (will create if none)
         :param coordinates: coordinate system to return all data in
         :param nsweeps_lidar: number of sweeps to use for the LDIAR
         :param nsweeps_radar: number of sweeps to use for the Radar
@@ -49,14 +47,14 @@ class NuscenesDataset(NuscenesDB):
         :param logger: use an existing logger
         """
 
-        self.available_coordinates = ['vehicle', 'global']
-        assert coordinates in self.available_coordinates, \
+        assert coordinates in ['vehicle', 'global'], \
             'Coordinate system not available.'
         assert split in _C.NUSCENES_SPLITS[nusc_version], \
             'Invalid split specified'
         assert pc_mode in ['camera', 'sample'], \
             '{} is not a valid return pc_mode'.format(pc_mode)
 
+        self.logger = logger
         self.nusc_path = nusc_path
         self.nusc_version = nusc_version
         self.split = split
@@ -66,30 +64,14 @@ class NuscenesDataset(NuscenesDB):
         self.sensors_to_return = sensors_to_return
         self.include_image = include_image
         self.pc_mode = pc_mode
+        self.radar_min_distance = 1
 
         if logger is None:
             self.logger = logging.initialize_logger('pynuscenes', logging_level)
-        else:
-            self.logger = logger
-        
-        mode_diff = set(_C.NUSCENES_RETURNS) - set(sensors_to_return)
-        if len(mode_diff) != 0:
-            self.logger.warning('NOT reading {}'.format(mode_diff))
-        
-        self.radar_min_distance = 1
-        self.lidar_min_distance = 1
-        
+
         super().__init__(nusc_path, nusc_version, split, 
-                         logging_level=logging_level)
-        
-        if db_file is None:
-            super().generate_db()
-        elif  os.path.exists(db_file):
-            with open(db_file, 'rb') as f:
-                self.db = pickle.load(f)
-        else:
-            self.logger.warning('{} does not exist, not saving'.format(db_file))
-            super().generate_db()
+                         logging_level=logging_level, logger=self.logger)
+        super().generate_db()
     
     ##--------------------------------------------------------------------------
     def __getitem__(self, idx):
@@ -98,7 +80,7 @@ class NuscenesDataset(NuscenesDB):
         """
 
         self.logger.debug('retrieveing id: {}'.format(idx))
-        assert idx <= len(self), 'Requested dataset index out of range'
+        assert idx < len(self), 'Requested dataset index out of range'
         
         if self.pc_mode == 'sample':
             return self.get_sensor_data_by_sample(idx)
@@ -110,8 +92,7 @@ class NuscenesDataset(NuscenesDB):
         """
         Get the number of samples in the dataset
         """
-        length = len(self.db['frames'])
-        return length
+        return len(self.db['frames'])
 
     ##--------------------------------------------------------------------------
     def get_sensor_data_by_camera(self, idx:int) -> dict:
@@ -132,26 +113,25 @@ class NuscenesDataset(NuscenesDB):
             'img_id': [],
             'id': frame['id']
         }
-        for i, relevant_camera in enumerate(frame['camera']):
-            self.logger.debug('Processing camera: {}'.format(relevant_camera['camera_name']))
-            
+        for i, cam in enumerate(frame['camera']): 
             ret_frame['img_id'].append(str(idx*6+i).zfill(self.IMG_ID_LEN))
 
             if 'lidar' in self.sensors_to_return:
                 lidar_pc = self.filter_points(frame['lidar']['points'].points, 
-                                              relevant_camera['cs_record'])
-                self.logger.debug('Num. filtered LIDAR points: {}'.format(lidar_pc.shape[1]))
+                                              cam['cs_record'])
                 ret_frame['lidar'].append(lidar_pc)
+                self.logger.debug('Num. filtered LIDAR points: {}'.format( \
+                                   lidar_pc.shape[1]))
 
             if 'radar' in self.sensors_to_return:
                 radar_pc = self.filter_points(frame['radar']['points'].points, 
-                                              relevant_camera['cs_record'])
-                self.logger.debug('Num. filtered RADAR points: {}'.format(radar_pc.shape[1]))
+                                              cam['cs_record'])
                 ret_frame['radar'].append(radar_pc)
+                self.logger.debug('Num. filtered RADAR points: {}'.format( \
+                                   radar_pc.shape[1]))
 
-            annotation = self.filter_anns(frame['annotations'], 
-                                          relevant_camera['cs_record'], 
-                                          img=relevant_camera['image'])
+            annotation = self.filter_anns(frame['annotations'], cam['cs_record'],
+                                          img=cam['image'])
             
             ret_frame['annotations'].append(annotation)
             self.logger.debug('Num. filtered annotations: {}'.format(len(annotation)))
@@ -318,7 +298,6 @@ class NuscenesDataset(NuscenesDB):
         pc.rotate(rot_matrix)
         pc.translate(np.array(cs_record['translation']))
 
-
         return pc
         
     ##--------------------------------------------------------------------------
@@ -383,20 +362,20 @@ class NuscenesDataset(NuscenesDB):
     
     ##--------------------------------------------------------------------------
     @staticmethod
-    def pc_to_sensor(pc_orig, cs_record, global_coordinates=False, 
-                     ego_pose=None):
+    def pc_to_sensor(pc_orig, cs_record, coordinates='vehicle', ego_pose=None):
         """
         Tramsform the input point cloud from global/vehicle coordinates to
         sensor coordinates
         """
-        assert pc_orig is not None, 'Pointcloud cannot be None. Nothing to translate'
-        assert global_coordinates is False or (global_coordinates and ego_pose is not None), \
-            'when in global coordinates, ego_pose is required'
+        if coordinates == 'global':
+            assert ego_pose is not None, \
+                'ego_pose is required in global coordinates'
+        
         ## Copy is required to prevent the original pointcloud from being manipulate
         pc = copy.deepcopy(pc_orig)
         
         if isinstance(pc, PointCloud):
-            if global_coordinates:
+            if coordinates == 'global':
                 ## Transform from global to vehicle
                 pc.translate(np.array(-np.array(ego_pose['translation'])))
                 pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
@@ -406,7 +385,7 @@ class NuscenesDataset(NuscenesDB):
             pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
         
         elif isinstance(pc, np.ndarray):
-            if global_coordinates:
+            if coordinates == 'global':
                 ## Transform from global to vehicle
                 for i in range(3):
                     pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose['translation']))[i]
@@ -422,7 +401,7 @@ class NuscenesDataset(NuscenesDB):
             if isinstance(pc[0], Box):
                 new_list = []
                 for box in pc:
-                    if global_coordinates:
+                    if coordinates == 'global':
                         ## Transform from global to vehicle
                         box.translate(-np.array(ego_pose['translation']))
                         box.rotate(Quaternion(ego_pose['rotation']).inverse)
@@ -434,7 +413,7 @@ class NuscenesDataset(NuscenesDB):
                 return new_list
         
         elif isinstance(pc, Box):
-            if global_coordinates:
+            if coordinates == 'global':
                 ## Transform from global to vehicle
                 pc.translate(-np.array(ego_pose['translation']))
                 pc.rotate(Quaternion(ego_pose['rotation']).inverse)
