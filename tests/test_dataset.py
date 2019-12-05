@@ -23,7 +23,7 @@ def test_dataset():
                                         nsweeps_lidar=1,
                                         nsweeps_radar=1)    
     for sample in tqdm(mini_dataset_vehicle):
-        fig = show_sample_data(sample, coordinates='vehicle')
+        show_sample_data(sample, coordinates='vehicle')
         input('press enter to continue')
     
     ## test global coordinates
@@ -34,7 +34,7 @@ def test_dataset():
                                         nsweeps_lidar=1,
                                         nsweeps_radar=1)  
     for sample in tqdm(mini_dataset_global):
-        fig = show_sample_data(sample, coordinates='global', fig=fig)
+        show_sample_data(sample, coordinates='global', fig=fig)
         input('press enter to continue')
 
 ##------------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
 from PIL import Image
+import time
 
 
 def show_sample_data(sample, coordinates='vehicle', fig=None):
@@ -24,63 +25,83 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
                           engine=None, size=(1600, 1000))
+    
+    cameras = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
+               'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
+    image_list = []
 
-    top_row = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT']
-    btm_row = ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
-    image_list = [[], []]
-
-    for cam in top_row:
+    ## Draw 2D point clouds maped to camera images
+    for cam in cameras:
         thisSample = copy.deepcopy(sample)
+        image = thisSample['camera'][_C.CAMERAS[cam]]['image']
+        ## Map LIDAR points
         image = map_pointcloud_to_image(thisSample['lidar']['points'],
-         thisSample['camera'][_C.CAMERAS[cam]]['image'], 
-         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         coordinates=coordinates,
-         ego_pose=thisSample['ego_pose'])
-
+                image, 
+                thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+                coordinates=coordinates,
+                ego_pose=thisSample['ego_pose'])
+        ## Map RADAR points
         image = map_pointcloud_to_image(thisSample['radar']['points'],
-         image, 
-         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         radius=8,
-         coordinates=coordinates,
-         ego_pose=thisSample['ego_pose'])
+                image, 
+                thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+                radius=8,
+                coordinates=coordinates,
+                ego_pose=thisSample['ego_pose'])
 
-        image_list[0].append(image)
-
-    for cam in btm_row:
-        thisSample = copy.deepcopy(sample)
-        image = map_pointcloud_to_image(thisSample['lidar']['points'],
-         thisSample['camera'][_C.CAMERAS[cam]]['image'], 
-         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         coordinates=coordinates,
-         ego_pose=thisSample['ego_pose'])
-        image = map_pointcloud_to_image(thisSample['radar']['points'],
-         image, 
-         thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
-         radius=8,
-         coordinates=coordinates,
-         ego_pose=thisSample['ego_pose'])
-        image_list[1].append(image)
-
+        image_list.append(image)
+    ## Draw 3D point clouds and annotations
     mlab.clf(figure=fig)
-    draw_pc(sample['lidar']['points'].points.T, 
-            fig=fig, scalar=sample['lidar']['points'].points.T[:,2])
+    draw_pc(sample['lidar']['points'].points.T, fig=fig, 
+            scalar=sample['lidar']['points'].points.T[:,2])
     draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), 
             pts_mode='sphere', pts_scale=.5)
 
+    ## Draw 3D annotation boxes
     corner_list = []
     box_names = []
     for box in sample['annotations']:
         corner_list.append(np.array(box.corners()))
         box_names.append(box.name)
-    corner_list = np.swapaxes(np.array(corner_list),1,2)
-    draw_gt_boxes3d(corner_list, box_names, fig=fig)
 
-    image = _arrange_images(image_list)
+    corner_list = np.swapaxes(np.array(corner_list),1,2)
+    
+    t = time.time()
+    draw_gt_boxes3d(corner_list, box_names, fig=fig, draw_text=False)
+    print(time.time() - t)
+    
+    image = arrange_images_PIL(image_list, grid_size=(2,3))
+    # image = _arrange_images(image_list)
     cv2.imshow('images', image)
     cv2.waitKey(1)
     mlab.show(1)
 
-    return fig
+##--------------------------------------------------------------------------
+def arrange_images_PIL(image_list: list, 
+                       im_size: tuple=(640,360),
+                       grid_size: tuple=(2,2)) -> np.ndarray:
+    """
+    Arranges multiple images into a single image
+    :param image_list: list of images
+    :param im_size: Size of each image in the grid (width, height)
+    :param grid_size: grid size
+    :return: grid image with all images
+    """
+    assert len(image_list) <= grid_size[0]*grid_size[1], \
+        "Provided more images than grid size."
+    
+    nrow = grid_size[0]
+    ncol = grid_size[1]
+    width = im_size[0]
+    height = im_size[1]
+    cvs = Image.new('RGB',(width*ncol, height*nrow))
+
+    for i, image in enumerate(image_list):
+        pil_image = Image.fromarray(image).resize(im_size)
+        px, py = width*(i%ncol), height*int(i/ncol)
+        cvs.paste(pil_image,(px,py))
+
+    cvs.show()
+    return cvs
 
 ##--------------------------------------------------------------------------
 def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
@@ -171,7 +192,7 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
     :param color_list: a list of RGB tuple, if not None, overwrite color.
     :return fig: updated fig
     ''' 
-    if fig is None: 
+    if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
                           engine=None, size=(1600, 1000))
     if box_names is None:
