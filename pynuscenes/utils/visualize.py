@@ -22,10 +22,6 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     :fig: An mayavi mlab figure object to display the 3D pointclouds on
     """
 
-    if fig is None:
-        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
-                          engine=None, size=(1600, 1000))
-    
     cameras = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
                'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
     image_list = []
@@ -49,12 +45,16 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
                 ego_pose=thisSample['ego_pose'])
 
         image_list.append(image)
+
     ## Draw 3D point clouds and annotations
+    if fig is None:
+        fig = mlab.figure(figure=None, bgcolor=(1,1,1), fgcolor=None, 
+                          engine=None, size=(1600, 1000))
     mlab.clf(figure=fig)
-    draw_pc(sample['lidar']['points'].points.T, fig=fig, 
+    draw_pc(sample['lidar']['points'].points.T, fig=fig, pts_size=3,
             scalar=sample['lidar']['points'].points.T[:,2])
     draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), 
-            pts_mode='sphere', pts_scale=.5)
+            pts_mode='sphere', pts_size=.5)
 
     ## Draw 3D annotation boxes
     corner_list = []
@@ -64,16 +64,15 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         box_names.append(box.name)
 
     corner_list = np.swapaxes(np.array(corner_list),1,2)
-    
-    t = time.time()
-    draw_gt_boxes3d(corner_list, box_names, fig=fig, draw_text=False)
-    print(time.time() - t)
+    draw_gt_boxes3d(corner_list, box_names, fig=fig, draw_text=False, 
+                    color=(0,0.85,0.1), line_width=3)
     
     image = arrange_images_PIL(image_list, grid_size=(2,3))
     # image = _arrange_images(image_list)
-    cv2.imshow('images', image)
-    cv2.waitKey(1)
+    # cv2.imshow('images', image)
+    # cv2.waitKey(1)
     mlab.show(1)
+    return fig
 
 ##--------------------------------------------------------------------------
 def arrange_images_PIL(image_list: list, 
@@ -226,7 +225,7 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
     return fig
 
 ##--------------------------------------------------------------------------
-def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4, 
+def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
     Draw lidar points
@@ -235,15 +234,23 @@ def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_scale=4,
     :param fig: mayavi figure handler, if None create new one otherwise will use it
     :return fig: created or used fig
     """
-    if fig is None: fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
-                                      engine=None, size=(1600, 1000))
-    if scalar is not None and pts_mode == 'point':
-        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, color=pts_color, 
-                      mode=pts_mode, colormap = 'gnuplot', 
-                      scale_factor=pts_scale, figure=fig)
+    if fig is None: 
+        fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
+                          engine=None, size=(1600, 1000))
+
+    if pts_mode == 'point':
+        if scalar is None:
+            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, 
+                        mode='point', colormap='gnuplot', figure=fig)
+        else:
+            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, 
+                        mode='point', colormap='gnuplot', figure=fig)
+        vis.actor.property.set(representation='p', point_size=pts_size)
+    
     else:
         mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode,
-                      colormap = 'gnuplot', scale_factor=pts_scale, figure=fig)
+                      colormap = 'gnuplot', scale_factor=pts_size, figure=fig)
+    
     return fig
 
 ##--------------------------------------------------------------------------
