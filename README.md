@@ -12,3 +12,24 @@ provides APIs for loading sensor data in different coordinate systems.
     - Visualize sample data in 2D and 3D environments
 
 ## Installation
+### Requirements
+- Linux or macOS
+- Python>= 3.6
+- pycocotools: 
+    ```bash
+    pip install cython pycocotools
+    ```
+- cocoplus:
+    ```bash
+    git clone https://github.com/mrnabati/cocoapi_plus.git
+    cd cocoapi_plus
+    pip install -e .
+    ```
+
+### Build nuscenes_dataset
+After having the above dependencies, run:
+```bash
+git clone https://github.com/mrnabati/nuscenes_dataset.git
+cd nuscenes_dataset
+pip install -e .
+```
