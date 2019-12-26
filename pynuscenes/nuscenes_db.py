@@ -46,13 +46,12 @@ class NuscenesDB(object):
         self.id_length = 8
         self.db = {}
         self.sample_id = 0
-        
+        self.logger = log.getLogger(__name__)
+
         assert nusc_version in constants.NUSCENES_SPLITS.keys(), \
             "Nuscenes version not valid."
         assert split in constants.NUSCENES_SPLITS[nusc_version], \
             "Nuscenes split ({}) is not valid for {}".format(split, nusc_version)
-
-        self.logger = log.getLogger(__name__)
             
         ## Load the NuScenes dataset
         verbose = False if logging_level=='INFO' else True
@@ -69,22 +68,20 @@ class NuscenesDB(object):
         to a pickle file
         """
         startTime = time.time()
-        self.logger.info('Creating DATABASE for {} {} dataset ...'.format( \
+        self.logger.info('Creating DATABASE for {} {} dataset'.format( \
                           self.nusc_version, self.split))
         scenes_list = self._split_scenes()
         frames = self._get_frames(scenes_list)
         metadata = {"version": self.nusc_version}
-        self.db = {
-                    'frames': frames,
-                    'metadata': metadata
-                    }
+        self.db = {'frames': frames,
+                   'metadata': metadata}
+        
         self.logger.info('Done in %.3fs' % (time.time()-startTime))
         self.logger.info('Number of samples in split: {}'.format(str(len(frames))))
+        
         ## if an output directory is specified, write to a pkl file
         if out_dir is not None:
-            self.logger.info('Writing pickle file at {}'.format(db_filename))
-            
-            out_dir = os.path.join(out_dir, self.nusc_version)
+            self.logger.info('Saving db to pickle file')
             os.mkdirs(out_dir, exist_ok=True)
             db_filename = "{}_db.pkl".format(self.split)
             with open(os.path.join(out_dir, db_filename), 'wb') as f:
