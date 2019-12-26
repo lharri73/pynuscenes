@@ -24,8 +24,8 @@ class NuscenesDataset(NuscenesDB):
                  nusc_version='v1.0-mini', 
                  split='mini_train',
                  coordinates='vehicle',
-                 nsweeps_lidar=1,
-                 nsweeps_radar=1, 
+                 lidar_sweeps=1,
+                 radar_sweeps=1, 
                  sensors_to_return=_C.NUSCENES_RETURNS,
                  include_image=True,
                  pc_mode='sample',
@@ -37,8 +37,8 @@ class NuscenesDataset(NuscenesDB):
         :param nusc_version: nuscenes dataset version
         :param split: split in the dataset to use
         :param coordinates: coordinate system to return all data in
-        :param nsweeps_lidar: number of sweeps to use for the LDIAR
-        :param nsweeps_radar: number of sweeps to use for the Radar
+        :param lidar_sweeps: number of sweeps to use for the LDIAR
+        :param radar_sweeps: number of sweeps to use for the Radar
         :param sensors_to_return: a list of sensor modalities to return (will skip all others)
         :param include_image (bool): If False, only path to each image in sample is returned
         :param pc_mode: 'camera' for separate filtered pointcloud for each camera, or
@@ -59,8 +59,8 @@ class NuscenesDataset(NuscenesDB):
         self.nusc_version = nusc_version
         self.split = split
         self.coordinates = coordinates
-        self.nsweeps_lidar = nsweeps_lidar
-        self.nsweeps_radar = nsweeps_radar
+        self.lidar_sweeps = lidar_sweeps
+        self.radar_sweeps = radar_sweeps
         self.sensors_to_return = sensors_to_return
         self.include_image = include_image
         self.pc_mode = pc_mode
@@ -183,7 +183,7 @@ class NuscenesDataset(NuscenesDB):
         if 'lidar' in self.sensors_to_return:
             sensor_data['lidar']['points'], sensor_data['lidar']['cs_record'] = \
                 self._get_lidar_data(sample_rec, lidar_sample_data, pose_rec, 
-                                     self.nsweeps_lidar)
+                                     self.lidar_sweeps)
 
         ## Get camera data
         if 'camera' in self.sensors_to_return:
@@ -198,7 +198,7 @@ class NuscenesDataset(NuscenesDB):
             sensor_data['radar']['points'] = self._get_all_radar_data(frame,
                                                             sample_rec,
                                                             pose_rec,
-                                                            self.nsweeps_radar)
+                                                            self.radar_sweeps)
        ## Get annotations
         sensor_data["annotations"] = self._get_annotations(frame, pose_rec)
         # print('nuscenes dataset', res['lidar']['points'].points.shape)
@@ -239,13 +239,13 @@ class NuscenesDataset(NuscenesDB):
 
     ##--------------------------------------------------------------------------
     def _get_all_radar_data(self, frame: dict, sample_rec: str, pose_rec, 
-                            nsweeps_radar: int) -> RadarPointCloud:
+                            radar_sweeps: int) -> RadarPointCloud:
         """
         Concatenates all radar pointclouds from this sample into one pointcloud
         :param frame: the frame returned from the db for this sample
         :param sample_rec: the sample record dictionary from nuscenes
         :param pose_rec: ego pose record dictionary from nuscenes
-        :param nsweeps_radar: number of sweeps to retrieve for each radar
+        :param radar_sweeps: number of sweeps to retrieve for each radar
         :return: RadarPointCloud with all points
         """
 
@@ -255,7 +255,7 @@ class NuscenesDataset(NuscenesDB):
             sample_data = self.nusc.get('sample_data', frame['sample'][radar])
             current_radar_pc = self._get_radar_data(sample_rec, 
                                                     sample_data, 
-                                                    nsweeps_radar)
+                                                    radar_sweeps)
             ## Vehicle to global
             if self.coordinates == 'global':
                 current_radar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)

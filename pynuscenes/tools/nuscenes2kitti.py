@@ -1,37 +1,5 @@
-# nuScenes dev-kit.
-# Code written by Holger Caesar, 2019.
-
 """
-This script converts nuScenes data to KITTI format and KITTI results to nuScenes.
-It is used for compatibility with software that uses KITTI-style annotations.
-
-We do not encourage this, as:
-- KITTI has only front-facing cameras, whereas nuScenes has a 360 degree horizontal fov.
-- KITTI has no radar data.
-- The nuScenes database format is more modular.
-- KITTI fields like occluded and truncated cannot be exactly reproduced from nuScenes data.
-- KITTI has different categories.
-
-Limitations:
-- We don't specify the KITTI imu_to_velo_kitti projection in this code base.
-- Attributes are not part of KITTI and therefore set to '' in the nuScenes result format.
-- Velocities are not part of KITTI and therefore set to 0 in the nuScenes result format.
-
-This script includes three main functions:
-- nuscenes_gt_to_kitti(): Converts nuScenes GT annotations to KITTI format.
-- render_kitti(): Render the annotations of the (generated or real) KITTI dataset.
-- kitti_res_to_nuscenes(): Converts a KITTI detection result to the nuScenes detection results format.
-
-To launch these scripts run:
-- python export_kitti.py nuscenes_gt_to_kitti --output_dir ~/nusc_kitti
-- python export_kitti.py render_kitti --output_dir ~/nusc_kitti --render_2d False
-- python export_kitti.py kitti_res_to_nuscenes --output_dir ~/nusc_kitti
-Note: The parameter --render_2d specifies whether to draw 2d or 3d boxes.
-
-To work with the original KITTI dataset, use these parameters:
- --output_dir /data/sets/kitti --split training
-
-See https://www.nuscenes.org/object-detection for more information on the nuScenes result format.
+# Code based on export_kitti.py written by Holger Caesar, 2019.
 """
 import os
 import json
