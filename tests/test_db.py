@@ -13,7 +13,7 @@ parser.add_argument('--versions')
 FLAGS = parser.parse_args()
 
 def test_nuscenes_db():
-    logger = logging.getLogger('pynuscenes')
+    logger = logging.getLogger(__name__)
     root = FLAGS.data_location
     passed = True
     for nuscenes_version in ['v1.0-mini']:

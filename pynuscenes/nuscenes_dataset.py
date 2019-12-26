@@ -1,5 +1,5 @@
 import io
-import logging
+# import logging
 import os
 import pickle
 import cv2
@@ -11,7 +11,7 @@ from pyquaternion import Quaternion
 from nuscenes.utils.geometry_utils import view_points, box_in_image
 from pynuscenes.nuscenes_db import NuscenesDB
 from pynuscenes.utils import constants as _C
-from pynuscenes.utils import logging
+from pynuscenes.utils import log
 import time
 import copy
 
@@ -29,8 +29,7 @@ class NuscenesDataset(NuscenesDB):
                  sensors_to_return=_C.NUSCENES_RETURNS,
                  include_image=True,
                  pc_mode='sample',
-                 logging_level="INFO",
-                 logger=None) -> None:
+                 logging_level="INFO") -> None:
         """
         Nuscenes Dataset object to get tokens for every sample in the nuscenes dataset
         :param nusc_path: path to the nuscenes rooth
@@ -54,7 +53,6 @@ class NuscenesDataset(NuscenesDB):
         assert pc_mode in ['camera', 'sample'], \
             '{} is not a valid return pc_mode'.format(pc_mode)
 
-        self.logger = logger
         self.nusc_path = nusc_path
         self.nusc_version = nusc_version
         self.split = split
@@ -65,12 +63,10 @@ class NuscenesDataset(NuscenesDB):
         self.include_image = include_image
         self.pc_mode = pc_mode
         self.radar_min_distance = 1
-
-        if logger is None:
-            self.logger = logging.initialize_logger('pynuscenes', logging_level)
+        self.logger = log.getLogger(__name__)
 
         super().__init__(nusc_path, nusc_version, split, 
-                         logging_level=logging_level, logger=self.logger)
+                         logging_level=logging_level)
         super().generate_db()
     
     ##--------------------------------------------------------------------------
@@ -79,7 +75,6 @@ class NuscenesDataset(NuscenesDB):
         Get the sample with index idx from the dataset
         """
 
-        self.logger.debug('retrieveing id: {}'.format(idx))
         assert idx < len(self), 'Requested dataset index out of range'
         
         if self.pc_mode == 'sample':
@@ -120,21 +115,16 @@ class NuscenesDataset(NuscenesDB):
                 lidar_pc = self.filter_points(frame['lidar']['points'].points, 
                                               cam['cs_record'])
                 ret_frame['lidar'].append(lidar_pc)
-                self.logger.debug('Num. filtered LIDAR points: {}'.format( \
-                                   lidar_pc.shape[1]))
 
             if 'radar' in self.sensors_to_return:
                 radar_pc = self.filter_points(frame['radar']['points'].points, 
                                               cam['cs_record'])
                 ret_frame['radar'].append(radar_pc)
-                self.logger.debug('Num. filtered RADAR points: {}'.format( \
-                                   radar_pc.shape[1]))
 
             annotation = self.filter_anns(frame['annotations'], cam['cs_record'],
                                           img=cam['image'])
             
             ret_frame['annotations'].append(annotation)
-            self.logger.debug('Num. filtered annotations: {}'.format(len(annotation)))
         
         return ret_frame
 

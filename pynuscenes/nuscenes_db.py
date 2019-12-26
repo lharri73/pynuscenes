@@ -8,9 +8,9 @@ import pickle
 from multiprocessing import RLock, Pool, freeze_support
 import multiprocessing
 import os
-import logging
+# import logging
 from pynuscenes.utils import constants
-from pynuscenes.utils import logging
+from pynuscenes.utils import log
 import time
 
 class NuscenesDB(object):
@@ -25,8 +25,7 @@ class NuscenesDB(object):
                  max_cam_sweeps=6,
                  max_lidar_sweeps=10,
                  max_radar_sweeps=6,
-                 logging_level="INFO",
-                 logger=None):
+                 logging_level="INFO"):
         """
         Image database object that holds the sample data tokens for the nuscenes
         dataset.
@@ -53,10 +52,7 @@ class NuscenesDB(object):
         assert split in constants.NUSCENES_SPLITS[nusc_version], \
             "Nuscenes split ({}) is not valid for {}".format(split, nusc_version)
 
-        if logger is None:
-            self.logger = logging.initialize_logger('pynuscenes', logging_level)
-        else:
-            self.logger = logger
+        self.logger = log.getLogger(__name__)
             
         ## Load the NuScenes dataset
         verbose = False if logging_level=='INFO' else True
@@ -115,7 +111,6 @@ class NuscenesDB(object):
         """
         returns (train_nusc_frames, val_nusc_frames) from the nuscenes dataset
         """
-        self.logger.debug('Generating train frames')
         frames = []
         for scene in scenes_list:
             frames = frames + self.process_scene_samples(scene)
@@ -132,7 +127,6 @@ class NuscenesDB(object):
         """
         scene_rec = self.nusc.get('scene', scene)
         scene_number = scene_rec['name'][-4:]
-        self.logger.debug('Processing scene {}'.format(scene_number))
 
         ## Get the first sample token in the scene
         sample_rec = self.nusc.get('sample', scene_rec['first_sample_token'])
