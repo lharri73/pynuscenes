@@ -1,9 +1,10 @@
 import numpy as np
 import math
 from pyquaternion import Quaternion
-from pynuscenes.nuscenes_dataset import NuscenesDataset
-from nuscenes.utils.geometry_utils import view_points
 from shapely.geometry import LineString
+from nuscenes.utils.geometry_utils import view_points
+from nuscenes.utils import splits
+from pynuscenes.nuscenes_dataset import NuscenesDataset
 from pynuscenes.utils import constants as NS_C
 
 
@@ -224,4 +225,21 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
 
     return bbox
 
+##------------------------------------------------------------------------------
+def split_scenes(scenes, split) -> list:
+    """
+    Get the list of scenes in a split
+    
+    :param scenes (list): list of all scenes from nuscene
+    :param split (str): split name
+    :return scene_list(list): list of scene tokens in the split
+    """
+    scene_split_names = splits.create_splits_scenes()[split]
+    scenes_list = []        
+    for scene in scenes:
+        #NOTE: mini train and mini val are subsets of train and val
+        if scene['name'] in scene_split_names:
+            scenes_list.append(scene['token'])
+
+    return scenes_list
 ##------------------------------------------------------------------------------

@@ -1,31 +1,38 @@
 import io
-# import logging
 import os
 import pickle
 import cv2
-import numpy as np
-from nuscenes.nuscenes import NuScenes
-from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
-from PIL import Image
-from pyquaternion import Quaternion
-from nuscenes.utils.geometry_utils import view_points, box_in_image
-from pynuscenes.nuscenes_db import NuscenesDB
-from pynuscenes.utils import constants as _C
-from pynuscenes.utils import log
 import time
 import copy
+import numpy as np
+from PIL import Image
+from nuscenes.nuscenes import NuScenes
+from nuscenes.utils.geometry_utils import view_points, box_in_image
+from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
 
-class NuscenesDataset(NuscenesDB):
+import pynuscenes.utils.nuscenes_utils as nsutils
+from pyquaternion import Quaternion
+from pynuscenes.utils import constants as _C
+from pynuscenes.utils import log
+from pynuscenes.utils import constants
+
+
+
+class NuscenesDataset(NuScenes):
+    """
+    Improved database and dataloader class for nuScenes.
+    """
 
     IMG_ID_LEN = 8
 
     def __init__(self, 
-                 nusc_path, 
+                 nusc_path='../data/nuscenes', 
                  nusc_version='v1.0-mini', 
                  split='mini_train',
                  coordinates='vehicle',
-                 lidar_sweeps=1,
-                 radar_sweeps=1, 
+                 max_lidar_sweeps=1,
+                 max_radar_sweeps=1, 
+                 max_camera_sweeps=1,
                  sensors_to_return=_C.NUSCENES_RETURNS,
                  include_image=True,
                  pc_mode='sample',
@@ -57,18 +64,22 @@ class NuscenesDataset(NuscenesDB):
         self.nusc_version = nusc_version
         self.split = split
         self.coordinates = coordinates
-        self.lidar_sweeps = lidar_sweeps
-        self.radar_sweeps = radar_sweeps
+        self.max_lidar_sweeps = max_lidar_sweeps
+        self.max_radar_sweeps = max_radar_sweeps
+        self.max_camera_sweeps = 5
         self.sensors_to_return = sensors_to_return
         self.include_image = include_image
         self.pc_mode = pc_mode
         self.radar_min_distance = 1
         self.logger = log.getLogger(__name__)
-
-        super().__init__(nusc_path, nusc_version, split, 
-                         logging_level=logging_level)
-        super().generate_db()
-    
+        self.ENABLE_SWEEPS = True
+        
+        self.logger.info('Loading NuScenes')
+        super().__init__(version = self.nusc_version,
+                         dataroot = self.nusc_path,
+                         verbose = False)
+        self.SENSOR_NAMES = [x['channel'] for x in self.sensor]
+        self.generate_db()
     ##--------------------------------------------------------------------------
     def __getitem__(self, idx):
         """
@@ -81,14 +92,109 @@ class NuscenesDataset(NuscenesDB):
             return self.get_sensor_data_by_sample(idx)
         elif self.pc_mode == 'camera':
             return self.get_sensor_data_by_camera(idx)
-    
     ##--------------------------------------------------------------------------
     def __len__(self):
         """
         Get the number of samples in the dataset
         """
         return len(self.db['frames'])
+    ##--------------------------------------------------------------------------
+    def generate_db(self, out_dir=None) -> None:
+        """
+        Read and preprocess the dataset samples and annotations, representing 
+        the dataset items in a lightweight, canonical format. This function does 
+        not read the sensor data files (e.g., images are not loaded into memory).
 
+        :param out_dir (str): Directory to save the database pickle file
+        :returns dataset_dicts (dict): a dictionary containing dataset meta-data 
+            and a list of dicts, one for each sample in the dataset
+        """
+        startTime = time.time()
+        scenes_list = nsutils.split_scenes(self.scene, self.split)
+        self.logger.info('Scenes in {} split: {}'.format(self.split, 
+                                                        str(len(scenes_list))))
+        self.logger.info('Creating database')
+        frames = self._get_frames(scenes_list)
+        metadata = {"version": self.nusc_version}
+        self.db = {"frames": frames,
+                   "metadata": metadata}
+        
+        self.logger.info('Created database in %.1f seconds' % (time.time()-startTime))
+        self.logger.info('Samples in {} split: {}'.format(self.split,
+                                                          str(len(frames))))
+        
+        ## if an output directory is specified, write to a pkl file
+        if out_dir is not None:
+            self.logger.info('Saving db to pickle file')
+            os.mkdirs(out_dir, exist_ok=True)
+            db_filename = "{}_db.pkl".format(self.split)
+            with open(os.path.join(out_dir, db_filename), 'wb') as f:
+                pickle.dump(self.db['test'], f)
+    ##--------------------------------------------------------------------------
+    def _get_frames(self, scenes_list) -> list:
+        """
+        returns (train_nusc_frames, val_nusc_frames) from the nuscenes dataset
+        """
+        frames = []
+        for scene in scenes_list:
+            scene_rec = self.get('scene', scene)
+            sample_rec = self.get('sample', scene_rec['first_sample_token'])
+            sensor_records = {x: self.get('sample_data', sample_rec['data'][x]) 
+                            for x in self.SENSOR_NAMES}
+            ## Loop over all samples in the scene
+            sample_id = 0
+            scene_frames = []
+            has_more_samples = True
+            
+            while has_more_samples:
+                sample = {}
+                sweeps = {}
+                for sensor_name, sensor_rec in sensor_records.items():
+                    sample[sensor_name] = sensor_rec['token']
+                    if self.ENABLE_SWEEPS:
+                        sweeps[sensor_name] = self._get_sweeps(sensor_rec)
+
+                frame = {'sample': sample,
+                        'sweeps': sweeps,
+                        'id': sample_id}
+                sample_id += 1
+
+                ## Get the next sample if it exists
+                if sample_rec['next'] == "":
+                    has_more_samples = False
+                else:
+                    sample_rec = self.get('sample', sample_rec['next'])
+                    sensor_records = {x: self.get('sample_data',
+                        sample_rec['data'][x]) for x in self.SENSOR_NAMES}
+                scene_frames.append(frame)
+            
+            frames += scene_frames
+        return frames
+    ##--------------------------------------------------------------------------
+    def _get_sweeps(self, sensor_record) -> dict:
+        """
+        Get previous sensor sweeps for the given sample record token
+        
+        :param sensor_record (dict): sensor record 
+        :return sweeps (list): list of sweeps for the sensor sample
+        """
+        sweeps = []
+        ind = 0
+        sensor_name = sensor_record['channel']
+        if 'CAMERA' in sensor_name:
+            n_sweeps = self.max_camera_sweeps
+        elif 'RADAR' in sensor_record:
+            n_sweeps = self.max_radar_sweeps
+        else:
+            n_sweeps = self.max_lidar_sweeps
+
+        while ind < n_sweeps:
+            if not sensor_record['prev'] == "":
+                sweeps.append(sensor_record['prev'])
+                sensor_record = self.get('sample_data', sensor_record['prev'])
+            else:
+                break
+        return sweeps
     ##--------------------------------------------------------------------------
     def get_sensor_data_by_camera(self, idx:int) -> dict:
         """
@@ -159,12 +265,12 @@ class NuscenesDataset(NuscenesDB):
         }
         
         ## Get sample and ego pose data
-        lidar_sample_data = self.nusc.get('sample_data', 
+        lidar_sample_data = self.get('sample_data', 
                                           frame['sample']['LIDAR_TOP'])
         sample_token = lidar_sample_data['sample_token']
-        sample_rec = self.nusc.get('sample', sample_token)
+        sample_rec = self.get('sample', sample_token)
         ego_pose_token = lidar_sample_data['ego_pose_token']
-        pose_rec = self.nusc.get('ego_pose', ego_pose_token)
+        pose_rec = self.get('ego_pose', ego_pose_token)
         sensor_data['ego_pose'] = {'translation': pose_rec['translation'], 
                                    'rotation': pose_rec['rotation']}
 
@@ -173,7 +279,7 @@ class NuscenesDataset(NuscenesDB):
         if 'lidar' in self.sensors_to_return:
             sensor_data['lidar']['points'], sensor_data['lidar']['cs_record'] = \
                 self._get_lidar_data(sample_rec, lidar_sample_data, pose_rec, 
-                                     self.lidar_sweeps)
+                                     self.max_lidar_sweeps)
 
         ## Get camera data
         if 'camera' in self.sensors_to_return:
@@ -188,7 +294,7 @@ class NuscenesDataset(NuscenesDB):
             sensor_data['radar']['points'] = self._get_all_radar_data(frame,
                                                             sample_rec,
                                                             pose_rec,
-                                                            self.radar_sweeps)
+                                                            self.max_radar_sweeps)
        ## Get annotations
         sensor_data["annotations"] = self._get_annotations(frame, pose_rec)
         # print('nuscenes dataset', res['lidar']['points'].points.shape)
@@ -208,7 +314,7 @@ class NuscenesDataset(NuscenesDB):
         else:
             box_list = []
             ## Get boxes from nuscenes in Global coordinates
-            orig_box_list = self.nusc.get_boxes(frame['sample']['LIDAR_TOP'])
+            orig_box_list = self.get_boxes(frame['sample']['LIDAR_TOP'])
             for box in orig_box_list:
                 ## Filter boxes based on their class
                 try:
@@ -216,7 +322,7 @@ class NuscenesDataset(NuscenesDB):
                 except KeyError:
                     continue
                 
-                box.velocity = self.nusc.box_velocity(box.token)
+                box.velocity = self.box_velocity(box.token)
                 
                 ## Global to Vehicle
                 if self.coordinates == 'vehicle':
@@ -242,7 +348,7 @@ class NuscenesDataset(NuscenesDB):
         all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
         
         for radar in _C.RADARS.keys():
-            sample_data = self.nusc.get('sample_data', frame['sample'][radar])
+            sample_data = self.get('sample_data', frame['sample'][radar])
             current_radar_pc = self._get_radar_data(sample_rec, 
                                                     sample_data, 
                                                     radar_sweeps)
@@ -268,7 +374,7 @@ class NuscenesDataset(NuscenesDB):
         """
 
         radar_path = os.path.join(self.nusc_path, sample_data['filename'])
-        cs_record = self.nusc.get('calibrated_sensor', 
+        cs_record = self.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
         
         if nsweeps > 1:
@@ -303,7 +409,7 @@ class NuscenesDataset(NuscenesDB):
         """
 
         lidar_path = os.path.join(self.nusc_path, sample_data['filename'])
-        cs_record = self.nusc.get('calibrated_sensor', 
+        cs_record = self.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
         if nsweeps > 1:
             ## Returns in vehicle
@@ -335,9 +441,9 @@ class NuscenesDataset(NuscenesDB):
         """
 
         ## Get camera image
-        cam_path = self.nusc.get_sample_data_path(cam_token)
-        cam_data = self.nusc.get('sample_data', cam_token)
-        cs_record = self.nusc.get('calibrated_sensor', 
+        cam_path = self.get_sample_data_path(cam_token)
+        cam_data = self.get('sample_data', cam_token)
+        cs_record = self.get('calibrated_sensor', 
                                   cam_data['calibrated_sensor_token'])
         if self.include_image:
             if os.path.exists(cam_path):
@@ -465,3 +571,8 @@ class NuscenesDataset(NuscenesDB):
                 visible_boxes.append(annotations_orig[i])
         
         return visible_boxes
+
+
+if __name__ == "__main__":
+    nusc_ds = NuscenesDataset()
+    print(nusc_ds[0])
