@@ -33,3 +33,64 @@ git clone https://github.com/mrnabati/nuscenes_dataset.git
 cd nuscenes_dataset
 pip install -e .
 ```
+
+## Getting Started
+
+#### Frame Structure
+Database frame:
+```
+frame = {
+    'camera': [{
+        token: str,
+        filename: str,
+        channel: str,
+        }, ...
+    ],
+    'lidar': {
+        token: str,
+        filename: str,
+        pc: nparray,
+        channel: str,
+    }
+    'radar': [{
+        token: str,
+        filename: str,
+        pc: nparray,
+        channel: str,
+        }, ...
+    ],
+    'sweeps': dict,
+    'meta': dict,
+    'id': sample_id
+}
+
+Dataloader frame:
+```
+frame = {
+    'camera': [{
+        token: str,
+        filename: str,
+        image: nparray,
+        sc_record: dict,
+        channel: str,
+        }, ...
+    ],
+    'lidar': [{
+        token: str,
+        filename: str,
+        pc: nparray,
+        channel: str,
+        }, ...
+    ],
+    'radar': [{
+        token: str,
+        filename: str,
+        pc: nparray,
+        channel: str,
+        }, ...
+    ],
+    'sweeps': dict,
+    'meta': dict,
+    'id': sample_id
+}
+```
