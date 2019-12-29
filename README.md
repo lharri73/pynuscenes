@@ -38,59 +38,63 @@ pip install -e .
 
 #### Frame Structure
 Database frame:
-```
+```yaml
 frame = {
-    'camera': [{
-        token: str,
-        filename: str,
-        channel: str,
+    'camera': [{            # A list of camera frame dictionaries (One for each camera)
+        token: str,         # Camera sensor record token
+        filename: str,      # Image filename, relative to nuscenes root dir
+        channel: str,       # Camera channel (e.g. CAM_FRONT_RIGHT)
         }, ...
     ],
-    'lidar': {
-        token: str,
-        filename: str,
-        pc: nparray,
-        channel: str,
-    }
-    'radar': [{
-        token: str,
-        filename: str,
-        pc: nparray,
-        channel: str,
+    'lidar': [{             # A list of LIDAR frame dictionaries
+        token: str,         # LIDAR sensor record token
+        filename: str,      # Pointcloud filename, relative to nuscenes root dir
+        channel: str,       # LIDAR channel (always LIDAR_TOP)
+        }, ...
+    ]
+    'radar': [{             # A list of Radar frame dictionaries (one for each Radar)
+        token: str,         # Radar sensor record token
+        filename: str,      # Pointcloud filename, relative to nuscenes root dir
+        channel: str,       # Radar channel (always RADAR_BACK_LEFT)
         }, ...
     ],
-    'sweeps': dict,
-    'meta': dict,
-    'id': sample_id
+    'anns': [{},...]        # All annotations for this sample
+    'sweeps': dict,         # Sensor sweep tokens (Not implemented yet)
+    'meta': dict,           # Frame meta-data
+    'id': int               # Frame ID
 }
-
-Dataloader frame:
 ```
-frame = {
+
+Dataloader frames have the same format as database frame, with the addition of 
+sensor data:
+
+```yaml
+frame = { ## fafdafd
     'camera': [{
+        image: nparray,     # Image from this camera
+        sc_record: dict,    # Camera sensor calibration parameters
         token: str,
         filename: str,
-        image: nparray,
-        sc_record: dict,
         channel: str,
         }, ...
     ],
     'lidar': [{
+        pc: ndarray,        # LIDAR Pointcloud
         token: str,
         filename: str,
-        pc: nparray,
         channel: str,
         }, ...
     ],
     'radar': [{
+        pc: ndarray,        # Radar Pointcloud
         token: str,
         filename: str,
-        pc: nparray,
         channel: str,
         }, ...
     ],
+    'anns': [{},...]
     'sweeps': dict,
     'meta': dict,
-    'id': sample_id
+    'id': int
 }
 ```

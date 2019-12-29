@@ -9,7 +9,7 @@ from PIL import Image
 from tqdm import tqdm as tqdm
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.geometry_utils import view_points, box_in_image
-from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
+from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud
 
 import pynuscenes.utils.nuscenes_utils as nsutils
 from pyquaternion import Quaternion
@@ -209,16 +209,16 @@ class NuscenesDataset(NuScenes):
             ret_frame['img_id'].append(str(idx*6+i).zfill(self.cfg.IMG_ID_LEN))
 
             if 'lidar' in self.sensors_to_return:
-                lidar_pc = self.filter_points(frame['lidar']['points'].points, 
+                lidar_pc = nsutils.filter_points(frame['lidar']['points'].points, 
                                               cam['cs_record'])
                 ret_frame['lidar'].append(lidar_pc)
 
             if 'radar' in self.sensors_to_return:
-                radar_pc = self.filter_points(frame['radar']['points'].points, 
+                radar_pc = nsutils.filter_points(frame['radar']['points'].points, 
                                               cam['cs_record'])
                 ret_frame['radar'].append(radar_pc)
 
-            annotation = self.filter_anns(frame['annotations'], cam['cs_record'],
+            annotation = nsutils.filter_anns(frame['annotations'], cam['cs_record'],
                                           img=cam['image'])
             
             ret_frame['annotations'].append(annotation)
@@ -396,127 +396,6 @@ class NuscenesDataset(NuScenes):
             raise Exception('Camera image not found at {}'.format(filename))
         image = np.array(Image.open(io.BytesIO(image_str)))
         return image, cs_record, filename
-    ##--------------------------------------------------------------------------
-    @staticmethod
-    def pc_to_sensor(pc_orig, cs_record, coordinates='vehicle', ego_pose=None):
-        """
-        Transform the input point cloud from global/vehicle coordinates to
-        sensor coordinates
-
-        :param pc_orig
-        :param cs_record
-        :param coordinates (string)
-        :ego_pose (dict)
-    
-        """
-        if coordinates == 'global':
-            assert ego_pose is not None, \
-                'ego_pose is required in global coordinates'
-        
-        ## Copy is required to prevent the original pointcloud from being manipulate
-        pc = copy.deepcopy(pc_orig)
-        
-        if isinstance(pc, PointCloud):
-            if coordinates == 'global':
-                ## Transform from global to vehicle
-                pc.translate(np.array(-np.array(ego_pose['translation'])))
-                pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
-
-            ## Transform from vehicle to sensor
-            pc.translate(-np.array(cs_record['translation']))
-            pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
-        elif isinstance(pc, np.ndarray):
-            if coordinates == 'global':
-                ## Transform from global to vehicle
-                for i in range(3):
-                    pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose['translation']))[i]
-                pc[:3, :] = np.dot(Quaternion(ego_pose['rotation']).rotation_matrix.T, pc[:3, :])
-            ## Transform from vehicle to sensor
-            for i in range(3):
-                pc[i, :] = pc[i, :] - np.array(cs_record['translation'])[i]
-            pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
-        elif isinstance(pc, list):
-            if len(pc) == 0:
-                return []
-            if isinstance(pc[0], Box):
-                new_list = []
-                for box in pc:
-                    if coordinates == 'global':
-                        ## Transform from global to vehicle
-                        box.translate(-np.array(ego_pose['translation']))
-                        box.rotate(Quaternion(ego_pose['rotation']).inverse)
-
-                    ## Transform from vehicle to sensor
-                    box.translate(-np.array(cs_record['translation']))
-                    box.rotate(Quaternion(cs_record['rotation']).inverse)
-                    new_list.append(box)
-                return new_list
-        elif isinstance(pc, Box):
-            if coordinates == 'global':
-                ## Transform from global to vehicle
-                pc.translate(-np.array(ego_pose['translation']))
-                pc.rotate(Quaternion(ego_pose['rotation']).inverse)
-            ## Transform from vehicle to sensor
-            pc.translate(-np.array(cs_record['translation']))
-            pc.rotate(Quaternion(cs_record['rotation']).inverse)
-        else:
-            raise TypeError('cannot filter object with type {}'.format(type(pc)))
-
-        return pc
-    ##--------------------------------------------------------------------------
-    @staticmethod
-    def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
-        """
-        Filter point cloud to only include the ones mapped inside an image
-
-        :param points: pointcloud or box in the coordinate system of the camera
-        :param cam_cs_record: calibrated sensor record of the camera to filter to
-        :param img_shape: shape of the image (width, height)
-        """
-        if isinstance(points_orig, np.ndarray):
-            points = NuscenesDataset.pc_to_sensor(points_orig, cam_cs_record)
-            viewed_points = view_points(points[:3, :], 
-                                    np.array(cam_cs_record['camera_intrinsic']), 
-                                    normalize=True)
-            visible = np.logical_and(viewed_points[0, :] > 0, 
-                                     viewed_points[0, :] < img_shape[0])
-            visible = np.logical_and(visible, viewed_points[1, :] < img_shape[1])
-            visible = np.logical_and(visible, viewed_points[1, :] > 0)
-            visible = np.logical_and(visible, points[2, :] > 1)
-            in_front = points[2, :] > 0.1  
-            # True if a corner is at least 0.1 meter in front of the camera.
-            
-            isVisible = np.logical_and(visible, in_front)
-            points_orig = points_orig.T[isVisible]
-            points_orig = points_orig.T
-            return points_orig
-        else:
-            raise TypeError('{} is not able to be filtered'.format(type(points)))
-    ##--------------------------------------------------------------------------
-    @staticmethod
-    def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), 
-                    img=np.zeros((900,1600,3))):
-        """
-        Filter annotations to only include the ones mapped inside an image
-
-        :param annotations_orig: annotation boxes
-        :param cam_cs_record: calibrated sensor record of the camera to filter to
-        :param img_shape: shape of the image (width, height)
-        """
-        if len(annotations_orig) == 0:
-            return []
-        assert isinstance(annotations_orig[0], Box)
-    
-        annotations = NuscenesDataset.pc_to_sensor(annotations_orig, cam_cs_record)
-        visible_boxes = []
-        for i, box in enumerate(annotations):
-            if box_in_image(box, np.array(cam_cs_record['camera_intrinsic']), 
-                            img_shape):
-                # box.render_cv2(img, view=np.array(cam_cs_record['camera_intrinsic']), normalize=True)
-                # cv2.imshow('image', img)
-                # cv2.waitKey(1)
-                visible_boxes.append(annotations_orig[i])
-        return visible_boxes
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":
     nusc_ds = NuscenesDataset(cfg='config/cfg.yml')

@@ -1,8 +1,7 @@
 import cv2
 from pynuscenes.utils import constants as _C
 import numpy as np
-from pynuscenes.nuscenes_dataset import NuscenesDataset
-from pynuscenes.utils.nuscenes_utils import bbox_to_corners, corners3d_to_image, box_corners_to_2dBox
+import pynuscenes.utils.nuscenes_utils as nsutils
 from nuscenes.utils.geometry_utils import view_points
 from pyquaternion import Quaternion
 import copy
@@ -17,6 +16,7 @@ import time
 def show_sample_data(sample, coordinates='vehicle', fig=None):
     """
     Render the data from all sensors in a single sample
+    
     :param sample [dict]: sample dictionary returned from nuscenes_db
     :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
     :fig: An mayavi mlab figure object to display the 3D pointclouds on
@@ -26,60 +26,52 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
                'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
     image_list = []
 
-    ## Draw 2D point clouds maped to camera images
-    for cam in cameras:
-        thisSample = copy.deepcopy(sample)
-        image = thisSample['camera'][_C.CAMERAS[cam]]['image']
-        ## Map LIDAR points
-        image = map_pointcloud_to_image(thisSample['lidar']['points'],
+    for i, cam in enumerate(sample['camera']):
+        image = cam['image']
+        image = map_pointcloud_to_image(sample['lidar'][0]['pointcloud'],
                 image, 
-                thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+                cam['cs_record'],
                 coordinates=coordinates,
-                ego_pose=thisSample['ego_pose'])
+                ego_pose=sample['ego_pose'])
         ## Map RADAR points
-        image = map_pointcloud_to_image(thisSample['radar']['points'],
+        image = map_pointcloud_to_image(sample['radar'][0]['pointcloud'],
                 image, 
-                thisSample['camera'][_C.CAMERAS[cam]]['cs_record'],
+                cam['cs_record'],
                 radius=8,
                 coordinates=coordinates,
-                ego_pose=thisSample['ego_pose'])
-
+                ego_pose=sample['ego_pose'])
         image_list.append(image)
 
-    ## Draw 3D point clouds and annotations
+    ## Draw 3D point clouds
     if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(1,1,1), fgcolor=None, 
                           engine=None, size=(1600, 1000))
     mlab.clf(figure=fig)
-    draw_pc(sample['lidar']['points'].points.T, fig=fig, pts_size=3,
-            scalar=sample['lidar']['points'].points.T[:,2])
-    draw_pc(sample['radar']['points'].points.T, fig=fig, pts_color=(1,0,0), 
+    draw_pc(sample['lidar'][0]['pointcloud'].points.T, fig=fig, pts_size=3,
+            scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
+    draw_pc(sample['radar'][0]['pointcloud'].points.T, fig=fig, pts_color=(1,0,0), 
             pts_mode='sphere', pts_size=.5)
 
     ## Draw 3D annotation boxes
     corner_list = []
     box_names = []
-    for box in sample['annotations']:
+    for box in sample['anns']:
         corner_list.append(np.array(box.corners()))
         box_names.append(box.name)
-
     corner_list = np.swapaxes(np.array(corner_list),1,2)
     draw_gt_boxes3d(corner_list, box_names, fig=fig, draw_text=False, 
                     color=(0,0.85,0.1), line_width=3)
     
     image = arrange_images_PIL(image_list, grid_size=(2,3))
-    # image = _arrange_images(image_list)
-    # cv2.imshow('images', image)
-    # cv2.waitKey(1)
     mlab.show(1)
     return fig
-
 ##--------------------------------------------------------------------------
 def arrange_images_PIL(image_list: list, 
                        im_size: tuple=(640,360),
                        grid_size: tuple=(2,2)) -> np.ndarray:
     """
     Arranges multiple images into a single image
+    
     :param image_list: list of images
     :param im_size: Size of each image in the grid (width, height)
     :param grid_size: grid size
@@ -101,7 +93,6 @@ def arrange_images_PIL(image_list: list,
 
     cvs.show()
     return cvs
-
 ##--------------------------------------------------------------------------
 def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
     """
@@ -116,7 +107,6 @@ def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
                     cv2.COLOR_RGB2BGR)) for pic in row))
     image = np.vstack((row) for row in rows)
     return image
-
 ##--------------------------------------------------------------------------
 def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle', 
                             radius=2, ego_pose=None):
@@ -133,7 +123,7 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle',
     :return image: Camera image with mapped point cloud.
     """
     ## Transform into the camera.
-    pc = NuscenesDataset.pc_to_sensor(pc, cam_cs_record, coordinates=coordinates, 
+    pc = nsutils.pc_to_sensor(pc, cam_cs_record, coordinates=coordinates, 
                                       ego_pose=ego_pose)
 
     ## Grab the depths (camera frame z axis points away from the camera).
@@ -164,7 +154,6 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle',
     #     plt.axis('off')
 
     return im
-
 ##--------------------------------------------------------------------------
 def plot_points_on_image(image, points, coloring, radius):
     newPoint = [0,0]
@@ -174,7 +163,6 @@ def plot_points_on_image(image, points, coloring, radius):
         cv2.circle(image, tuple(newPoint), radius, 
                    (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image
-
 ##--------------------------------------------------------------------------
 def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
                     line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
@@ -221,9 +209,8 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
                         color=color, tube_radius=None, line_width=line_width, 
                         figure=fig)
     #mlab.show(1)
-    #mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
+    mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
     return fig
-
 ##--------------------------------------------------------------------------
 def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
@@ -263,8 +250,8 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
     
     """
     # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    corners_3d = bbox_to_corners(boxes)
-    corners_2d, _ = corners3d_to_image(corners_3d, cam_cs_record, (img.shape[1], 
+    corners_3d = nsutils.bbox_to_corners(boxes)
+    corners_2d, _ = nsutils.corners3d_to_image(corners_3d, cam_cs_record, (img.shape[1], 
                                      img.shape[0]))
     for this_box_corners in corners_2d:
         img = render_cv2(img, this_box_corners)
