@@ -189,8 +189,7 @@ class NuscenesDataset(NuScenes):
         frame = copy.deepcopy(self.db['frames'][idx])
         ## Get ego pose data
         lidar_rec = self.get('sample_data', frame['lidar'][0]['token'])
-        ego_pose_token = lidar_rec['ego_pose_token']
-        pose_rec = self.get('ego_pose', ego_pose_token)
+        pose_rec = self.get('ego_pose', lidar_rec['ego_pose_token'])
         frame['ego_pose'] = {'translation': pose_rec['translation'], 
                              'rotation': pose_rec['rotation']}
         
@@ -206,27 +205,26 @@ class NuscenesDataset(NuScenes):
 
         ## Get LIDAR data
         for i, lidar in enumerate(frame['lidar']):
-            lidar_pc, lidar_cs = self._get_lidar_data(sample_rec, 
-                                                      lidar_rec,
-                                                      pose_rec, 
-                                                      self.cfg.LIDAR_SWEEPS)
+            lidar_pc, lidar_cs = self._get_pointsensor_data('lidar',
+                                                            sample_rec,
+                                                            lidar_rec,
+                                                            pose_rec, 
+                                                            self.cfg.LIDAR_SWEEPS)
             frame['lidar'][i]['pointcloud'] = lidar_pc
             frame['lidar'][i]['cs_record'] = lidar_cs
 
         ## Get Radar data
         all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
         for i, radar in enumerate(frame['radar']):
-            sample_data = self.get('sample_data', radar['token'])
-            current_radar_pc = self._get_radar_data(sample_rec, 
-                                                    sample_data, 
-                                                    self.cfg.RADAR_SWEEPS)
-            ## Vehicle to global coordinate
-            if self.cfg.COORDINATES == 'global':
-                current_radar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
-                current_radar_pc.translate(np.array(pose_rec['translation']))
-
+            radar_rec = self.get('sample_data', radar['token'])
+            pose_rec = self.get('ego_pose', radar_rec['ego_pose_token'])
+            radar_pc, _ = self._get_pointsensor_data('radar',
+                                                     sample_rec, 
+                                                     radar_rec, 
+                                                     pose_rec,
+                                                     self.cfg.RADAR_SWEEPS)
             all_radar_pcs.points = np.hstack((all_radar_pcs.points, 
-                                              current_radar_pc.points))
+                                              radar_pc.points))
         frame['radar'] = [{}]
         frame['radar'][0]['pointcloud'] = all_radar_pcs
  
@@ -267,74 +265,52 @@ class NuscenesDataset(NuScenes):
                 box_list.append(box)
         return box_list
     ##--------------------------------------------------------------------------
-    def _get_radar_data(self, 
-                        sample_rec, 
-                        sample_data, 
-                        nsweeps) -> RadarPointCloud:
-        """
-        Returns Radar point cloud in Vehicle Coordinates
-        
-        :param sample_rec: sample record dictionary from nuscenes
-        :param sample_data: sample data dictionary from nuscenes
-        :param nsweeps: number of sweeps to return for this radar
-        :return pc: RadarPointCloud containing this samnple and all sweeps
-        """
-        radar_path = os.path.join(self.cfg.DATA_ROOT, sample_data['filename'])
-        cs_record = self.get('calibrated_sensor', 
-                                  sample_data['calibrated_sensor_token'])
-        if nsweeps > 1:
-            ## Returns in vehicle coordinates
-            pc, _ = RadarPointCloud.from_file_multisweep(self,
-                                            sample_rec, 
-                                            sample_data['channel'], 
-                                            sample_data['channel'], 
-                                            nsweeps=nsweeps,
-                                            min_distance=self.cfg.PC_MIN_DIST)
-        else:
-            ## Returns in sensor coordinates
-            pc = RadarPointCloud.from_file(radar_path)
-        ## Sensor to vehicle
-        rot_matrix = Quaternion(cs_record['rotation']).rotation_matrix
-        pc.rotate(rot_matrix)
-        pc.translate(np.array(cs_record['translation']))
-        return pc
-    ##--------------------------------------------------------------------------
-    def _get_lidar_data(self, sample_rec, sample_data, 
-                        pose_rec, nsweeps=1) -> LidarPointCloud:
+    def _get_pointsensor_data(self, 
+                             sensor_type,
+                             sample_rec, 
+                             sample_data, 
+                             pose_rec=None, 
+                             nsweeps=1):
         """
         Returns the LIDAR pointcloud for this frame in vehicle/global coordniates
         
         :param sample_rec: sample record dictionary from nuscenes
         :param sample_data: sample data dictionary from nuscenes
+        :param sensor_type (str): 'radar' or 'lidar'
         :param pose_rec: ego pose record dictionary from nuscenes
-        :param nsweeps: number of sweeps to return for the LIDAR
-        :return: LidarPointCloud containing this sample and all sweeps
+        :param nsweeps: number of previous sweeps to include
+        :return pc: Point cloud
         """
-        lidar_path = os.path.join(self.cfg.DATA_ROOT, sample_data['filename'])
+        data_filepath = os.path.join(self.cfg.DATA_ROOT, sample_data['filename'])
         cs_record = self.get('calibrated_sensor', 
-                                  sample_data['calibrated_sensor_token'])
-        # if nsweeps > 1:
-        if True:
-            ## Returns in vehicle
-            lidar_pc, _ = LidarPointCloud.from_file_multisweep(self,
+                             sample_data['calibrated_sensor_token'])
+        ## Read data from file
+        if sensor_type == 'lidar':
+            pc, _ = LidarPointCloud.from_file_multisweep(self,
+                                                        sample_rec, 
+                                                        sample_data['channel'], 
+                                                        sample_data['channel'], 
+                                                        nsweeps=nsweeps,
+                                                        min_distance=self.cfg.PC_MIN_DIST)
+        elif sensor_type == 'radar':
+            pc, _ = RadarPointCloud.from_file_multisweep(self,
                                                         sample_rec, 
                                                         sample_data['channel'], 
                                                         sample_data['channel'], 
                                                         nsweeps=nsweeps,
                                                         min_distance=self.cfg.PC_MIN_DIST)
         else:
-            ## returns in sensor coordinates
-            lidar_pc = LidarPointCloud.from_file(lidar_path)
-        
-        ## Sensor to vehicle
-        lidar_pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
-        lidar_pc.translate(np.array(cs_record['translation']))
+            raise Exception('Sensor type not valid.')
+
+        ## Take to vehicle coordinates
+        pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix)
+        pc.translate(np.array(cs_record['translation']))
        
-        ## Vehicle to global
+        ## Take to global coordinates
         if self.cfg.COORDINATES == 'global':
-            lidar_pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
-            lidar_pc.translate(np.array(pose_rec['translation']))
-        return lidar_pc, cs_record
+            pc.rotate(Quaternion(pose_rec['rotation']).rotation_matrix)
+            pc.translate(np.array(pose_rec['translation']))
+        return pc, cs_record
     ##--------------------------------------------------------------------------
     def _get_cam_data(self, cam_token) -> (np.ndarray, np.ndarray):
         """

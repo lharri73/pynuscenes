@@ -7,11 +7,11 @@ VERBOSE: True                     # enable verbose mode
 ## DATALOADER ##################################################################
 COORDINATES: "vehicle"    # coordinate system to return all data in
                           # "vehicle" or "global"
-SAMPLE_MODE: "all_cam"    # sample structure
+SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
-RADAR_SWEEPS: 1           # Number of Radar sweeps
-LIDAR_SWEEPS: 2           # Number of LIDAR sweeps
+LIDAR_SWEEPS: 5           # Number of LIDAR sweeps
+RADAR_SWEEPS: 3           # Number of Radar sweeps
 SENSORS: [                # list of sensor modalities to include in the dataloader
   "CAM_FRONT_LEFT",
   "CAM_FRONT_RIGHT",
