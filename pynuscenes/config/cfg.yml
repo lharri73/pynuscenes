@@ -7,15 +7,11 @@ VERBOSE: True                     # enable verbose mode
 ## DATALOADER ##################################################################
 COORDINATES: "vehicle"    # coordinate system to return all data in
                           # "vehicle" or "global"
-POINTCLOUD_MODE: "sample" # "camera": separate filtered pointcloud for each image
-                          # "sample": one pointcloud for all cameras
 SAMPLE_MODE: "all_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
-ENABLE_SWEEPS: False      # Include previous sensor sweeps (sweeps have no gt)
-CAMERA_SWEEPS: 5          # Number of camera sweeps
-RADAR_SWEEPS: 10          # Number of Radar sweeps
-LIDAR_SWEEPS: 10          # Number of LIDAR sweeps
+RADAR_SWEEPS: 1           # Number of Radar sweeps
+LIDAR_SWEEPS: 2           # Number of LIDAR sweeps
 SENSORS: [                # list of sensor modalities to include in the dataloader
   "CAM_FRONT_LEFT",
   "CAM_FRONT_RIGHT",
@@ -33,7 +29,7 @@ SENSORS: [                # list of sensor modalities to include in the dataload
 
 ## MISC ########################################################################
 IMG_ID_LEN: 8                     # length of string image ID
-RADAR_MIN_DIST: 1
+PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
 CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
 FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
 LOG_OUT_DIR: "../../output/logs"  # output log filename

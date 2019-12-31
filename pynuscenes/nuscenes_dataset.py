@@ -35,8 +35,6 @@ class NuscenesDataset(NuScenes):
             'Coordinate system not valid.'
         assert self.cfg.SPLIT in _C.NUSCENES_SPLITS[self.cfg.VERSION], \
             'NuScenes split not valid.'
-        assert self.cfg.POINTCLOUD_MODE in ['camera', 'sample'], \
-            'Pointcloud mode not valid'
 
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.cfg.DATA_ROOT,
@@ -51,17 +49,13 @@ class NuscenesDataset(NuScenes):
         :return sample (dict): one sample from the dataset
         """
         assert idx < len(self), 'Requested dataset index out of range'
-        
-        if self.cfg.POINTCLOUD_MODE == 'sample':
-            return self.get_sensor_data_by_sample(idx)
-        elif self.cfg.POINTCLOUD_MODE == 'camera':
-            return self.get_sensor_data_by_camera(idx)
+        return self._get_sensor_data(idx)
     ##--------------------------------------------------------------------------
     def __len__(self):
         """
         Get the number of samples in the dataset
-
-        return len (int): number of sample in the dataset
+        
+        :return len (int): number of sample in the dataset
         """
         return len(self.db['frames'])
     ##--------------------------------------------------------------------------
@@ -156,8 +150,6 @@ class NuscenesDataset(NuScenes):
             frames.append(frame)
             self.frame_id += 1
 
-        # if self.cfg.ENABLE_SWEEPS:
-        #     sweeps[sensor_name] = self._get_sweep_tokens(sensor_rec)
         return frames
     ##--------------------------------------------------------------------------
     def _get_sweep_tokens(self, sensor_record) -> dict:
@@ -187,46 +179,9 @@ class NuscenesDataset(NuScenes):
                 break
         return sweeps
     ##--------------------------------------------------------------------------
-    def get_sensor_data_by_camera(self, idx) -> dict:
+    def _get_sensor_data(self, idx) -> dict:
         """
-        Returns sensor data in vehicle or global coordinates filtered for each
-        camera
-
-        :param idx: id of the dataset's split to retrieve
-        :return ret_frame: dictionary containing all sensor data for that frame
-        """
-        frame = self.get_sensor_data_by_sample(idx)
-        ret_frame = {
-            'camera': frame['camera'],
-            'radar': [],
-            'lidar': [],
-            'annotations': [],
-            'ego_pose': frame['ego_pose'],
-            'img_id': [],
-            'id': frame['id']
-        }
-        for i, cam in enumerate(frame['camera']): 
-            ret_frame['img_id'].append(str(idx*6+i).zfill(self.cfg.IMG_ID_LEN))
-
-            if 'lidar' in self.sensors_to_return:
-                lidar_pc = nsutils.filter_points(frame['lidar']['points'].points, 
-                                              cam['cs_record'])
-                ret_frame['lidar'].append(lidar_pc)
-
-            if 'radar' in self.sensors_to_return:
-                radar_pc = nsutils.filter_points(frame['radar']['points'].points, 
-                                              cam['cs_record'])
-                ret_frame['radar'].append(radar_pc)
-
-            annotation = nsutils.filter_anns(frame['annotations'], cam['cs_record'],
-                                          img=cam['image'])
-            
-            ret_frame['annotations'].append(annotation)
-        return ret_frame
-    ##--------------------------------------------------------------------------
-    def get_sensor_data_by_sample(self, idx) -> dict:
-        """
-        Returns sensor data in vehicle or global coordinates
+        Returns a frame with sensor data in vehicle or global coordinates
         
         :param idx (int): id of the dataset's split to retrieve
         :return sensor_data (dict): all sensor data for that frame
@@ -249,14 +204,14 @@ class NuscenesDataset(NuScenes):
             frame['camera'][i]['cs_record'] = cs_record
             frame['camera'][i]['filename'] = filename
 
-        ## TODO: return numpy arrays for pointclouds to match get_sensor_data_by_sample
         ## Get LIDAR data
         for i, lidar in enumerate(frame['lidar']):
-            lidar_pc, lidar_cs_record = self._get_lidar_data(sample_rec, 
-                                                lidar_rec, pose_rec, 
-                                                self.cfg.LIDAR_SWEEPS)
+            lidar_pc, lidar_cs = self._get_lidar_data(sample_rec, 
+                                                      lidar_rec,
+                                                      pose_rec, 
+                                                      self.cfg.LIDAR_SWEEPS)
             frame['lidar'][i]['pointcloud'] = lidar_pc
-            frame['lidar'][i]['cs_record'] = lidar_cs_record
+            frame['lidar'][i]['cs_record'] = lidar_cs
 
         ## Get Radar data
         all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
@@ -277,8 +232,8 @@ class NuscenesDataset(NuScenes):
  
         ## Get annotations
         frame["anns"] = self._get_annotations(frame, pose_rec)
-        # print('nuscenes dataset', res['lidar']['points'].points.shape)
         self.logger.debug('Annotation Length: {}'.format(len(frame['anns'])))
+
         return frame
     ##--------------------------------------------------------------------------
     def _get_annotations(self, frame, pose_rec) -> [Box]:
@@ -312,7 +267,9 @@ class NuscenesDataset(NuScenes):
                 box_list.append(box)
         return box_list
     ##--------------------------------------------------------------------------
-    def _get_radar_data(self, sample_rec, sample_data, 
+    def _get_radar_data(self, 
+                        sample_rec, 
+                        sample_data, 
                         nsweeps) -> RadarPointCloud:
         """
         Returns Radar point cloud in Vehicle Coordinates
@@ -332,7 +289,7 @@ class NuscenesDataset(NuScenes):
                                             sample_data['channel'], 
                                             sample_data['channel'], 
                                             nsweeps=nsweeps,
-                                            min_distance=self.cfg.RADAR_MIN_DIST)
+                                            min_distance=self.cfg.PC_MIN_DIST)
         else:
             ## Returns in sensor coordinates
             pc = RadarPointCloud.from_file(radar_path)
@@ -356,13 +313,15 @@ class NuscenesDataset(NuScenes):
         lidar_path = os.path.join(self.cfg.DATA_ROOT, sample_data['filename'])
         cs_record = self.get('calibrated_sensor', 
                                   sample_data['calibrated_sensor_token'])
-        if nsweeps > 1:
+        # if nsweeps > 1:
+        if True:
             ## Returns in vehicle
             lidar_pc, _ = LidarPointCloud.from_file_multisweep(self,
                                                         sample_rec, 
                                                         sample_data['channel'], 
                                                         sample_data['channel'], 
-                                                        nsweeps=nsweeps)
+                                                        nsweeps=nsweeps,
+                                                        min_distance=self.cfg.PC_MIN_DIST)
         else:
             ## returns in sensor coordinates
             lidar_pc = LidarPointCloud.from_file(lidar_path)

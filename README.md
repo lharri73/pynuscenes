@@ -79,14 +79,14 @@ frame = { ## fafdafd
         }, ...
     ],
     'lidar': [{
-        pc: ndarray,        # LIDAR Pointcloud
+        pointcloud: ndarray,        # LIDAR Pointcloud
         token: str,
         filename: str,
         channel: str,
         }, ...
     ],
     'radar': [{
-        pc: ndarray,        # Radar Pointcloud
+        pointcloud: ndarray,        # Radar Pointcloud
         token: str,
         filename: str,
         channel: str,

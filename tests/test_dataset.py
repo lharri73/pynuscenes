@@ -8,8 +8,13 @@ def test_dataset():
     
     mini_dataset_vehicle = NuscenesDataset(cfg='../pynuscenes/config/cfg.yml')
     for sample in tqdm(mini_dataset_vehicle):
-        show_sample_data(sample, coordinates='vehicle')
-        input('press enter to continue')
+        print('lidar:', sample['lidar'][0]['pointcloud'].points.shape)
+        print('radar:', sample['radar'][0]['pointcloud'].points.shape)
+        print('anns:', len(sample['anns']))
+        input('here')
+        # exit()
+        # show_sample_data(sample, coordinates='vehicle')
+        # input('press enter to continue')
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":
     test_dataset()
