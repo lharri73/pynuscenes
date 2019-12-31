@@ -1,16 +1,16 @@
+import os
 import cv2
-from pynuscenes.utils import constants as _C
-import numpy as np
-import pynuscenes.utils.nuscenes_utils as nsutils
-from nuscenes.utils.geometry_utils import view_points
-from pyquaternion import Quaternion
+import time
 import copy
+import numpy as np
+from PIL import Image
+from tqdm import tqdm
 import mayavi.mlab as mlab
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-import os
-from PIL import Image
-import time
+from pyquaternion import Quaternion
+from pynuscenes.utils import constants as _C
+import pynuscenes.utils.nuscenes_utils as nsutils
+from nuscenes.utils.geometry_utils import view_points
 
 
 def show_sample_data(sample, coordinates='vehicle', fig=None):
@@ -21,36 +21,40 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
     :fig: An mayavi mlab figure object to display the 3D pointclouds on
     """
-
-    cameras = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
-               'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
     image_list = []
-
+    ## Map pointclouds to images
     for i, cam in enumerate(sample['camera']):
         image = cam['image']
         image = map_pointcloud_to_image(sample['lidar'][0]['pointcloud'],
-                image, 
-                cam['cs_record'],
-                coordinates=coordinates,
-                ego_pose=sample['ego_pose'])
-        ## Map RADAR points
+                                        image, 
+                                        cam['cs_record'],
+                                        coordinates=coordinates,
+                                        ego_pose=sample['ego_pose'])
         image = map_pointcloud_to_image(sample['radar'][0]['pointcloud'],
-                image, 
-                cam['cs_record'],
-                radius=8,
-                coordinates=coordinates,
-                ego_pose=sample['ego_pose'])
+                                        image, 
+                                        cam['cs_record'],
+                                        radius=8,
+                                        coordinates=coordinates,
+                                        ego_pose=sample['ego_pose'])
         image_list.append(image)
 
-    ## Draw 3D point clouds
+    ## Create figure
     if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(1,1,1), fgcolor=None, 
                           engine=None, size=(1600, 1000))
     mlab.clf(figure=fig)
-    draw_pc(sample['lidar'][0]['pointcloud'].points.T, fig=fig, pts_size=3,
-            scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
-    draw_pc(sample['radar'][0]['pointcloud'].points.T, fig=fig, pts_color=(1,0,0), 
-            pts_mode='sphere', pts_size=.5)
+    
+    ## Draw LIDAR
+    draw_pointcloud(sample['lidar'][0]['pointcloud'].points.T, 
+                    fig=fig, 
+                    pts_size=3,
+                    scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
+    ## Draw Radar
+    draw_pointcloud(sample['radar'][0]['pointcloud'].points.T, 
+                    fig=fig, 
+                    pts_color=(1,0,0), 
+                    pts_mode='sphere', 
+                    pts_size=.5)
 
     ## Draw 3D annotation boxes
     corner_list = []
@@ -65,49 +69,38 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     image = arrange_images_PIL(image_list, grid_size=(2,3))
     mlab.show(1)
     return fig
-##--------------------------------------------------------------------------
-def arrange_images_PIL(image_list: list, 
-                       im_size: tuple=(640,360),
-                       grid_size: tuple=(2,2)) -> np.ndarray:
+##------------------------------------------------------------------------------
+def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
+            pts_mode='point', pts_color=None):
+    """ 
+    Draw lidar points
+    :parma pc (nparray): numpy array (n,3) of XYZ
+    :param scalar (list): 
+    :param color (nparray): numpy array (n) of intensity or whatever
+    :param fig: mayavi figure handler, if None create new one otherwise will use it
+    :return fig: created or used fig
     """
-    Arranges multiple images into a single image
+    if fig is None: 
+        fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
+                          engine=None, size=(1600, 1000))
     
-    :param image_list: list of images
-    :param im_size: Size of each image in the grid (width, height)
-    :param grid_size: grid size
-    :return: grid image with all images
-    """
-    assert len(image_list) <= grid_size[0]*grid_size[1], \
-        "Provided more images than grid size."
+    if pts_mode == 'point':
+        if scalar is None:
+            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, 
+                        mode='point', colormap='gnuplot', figure=fig)
+        else:
+            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, 
+                        mode='point', colormap='gnuplot', figure=fig, color=pts_color)
+        vis.actor.property.set(representation='p', point_size=pts_size)
+    else:
+        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode,
+                      colormap = 'gnuplot', scale_factor=pts_size, figure=fig)
     
-    nrow = grid_size[0]
-    ncol = grid_size[1]
-    width = im_size[0]
-    height = im_size[1]
-    cvs = Image.new('RGB',(width*ncol, height*nrow))
-
-    for i, image in enumerate(image_list):
-        pil_image = Image.fromarray(image).resize(im_size)
-        px, py = width*(i%ncol), height*int(i/ncol)
-        cvs.paste(pil_image,(px,py))
-
-    cvs.show()
-    return cvs
-##--------------------------------------------------------------------------
-def _arrange_images(image_list: list, im_size: tuple=(640,360)) -> np.ndarray:
-    """
-    Arranges multiple images into a single image
-    :param image_list: list rows where a row is a list of images
-    :param image_size: new size of the images
-    :return: the new image as a numpy array
-    """
-    rows = []
-    for row in image_list:
-        rows.append(np.hstack((cv2.cvtColor(cv2.resize(pic, im_size), 
-                    cv2.COLOR_RGB2BGR)) for pic in row))
-    image = np.vstack((row) for row in rows)
-    return image
-##--------------------------------------------------------------------------
+    # draw origin
+    mlab.points3d(0, 0, 0, color=(1, 1, 1), mode='sphere', scale_factor=0.6, figure=fig)
+    
+    return fig
+##------------------------------------------------------------------------------
 def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle', 
                             radius=2, ego_pose=None):
     """
@@ -154,7 +147,7 @@ def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle',
     #     plt.axis('off')
 
     return im
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def plot_points_on_image(image, points, coloring, radius):
     newPoint = [0,0]
     coloring = coloring * 255.0 / 20.0
@@ -163,7 +156,7 @@ def plot_points_on_image(image, points, coloring, radius):
         cv2.circle(image, tuple(newPoint), radius, 
                    (int(coloring[i]),0,255-int(coloring[i])), -1)
     return image
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
                     line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
                     color_list=None):
@@ -209,45 +202,17 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
                         color=color, tube_radius=None, line_width=line_width, 
                         figure=fig)
     #mlab.show(1)
-    mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
+    mlab.view(azimuth=180, elevation=70, 
+              focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], 
+              distance=62.0, figure=fig)
     return fig
-##--------------------------------------------------------------------------
-def draw_pc(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
-            pts_mode='point', pts_color=None):
-    """ 
-    Draw lidar points
-    :parma pc: numpy array (n,3) of XYZ
-    :param color: numpy array (n) of intensity or whatever
-    :param fig: mayavi figure handler, if None create new one otherwise will use it
-    :return fig: created or used fig
-    """
-    if fig is None: 
-        fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
-                          engine=None, size=(1600, 1000))
-
-    if pts_mode == 'point':
-        if scalar is None:
-            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, 
-                        mode='point', colormap='gnuplot', figure=fig)
-        else:
-            vis = mlab.points3d(pc[:,0], pc[:,1], pc[:,2], scalar, 
-                        mode='point', colormap='gnuplot', figure=fig)
-        vis.actor.property.set(representation='p', point_size=pts_size)
-    
-    else:
-        mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode,
-                      colormap = 'gnuplot', scale_factor=pts_size, figure=fig)
-    
-    return fig
-
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
     """
     Show 3D boxes in [x,y,z,w,l,h,ry] format on the image
     :param boxes (ndarray<N,7>): 3D boxes 
     :param img (ndarray<H,W,3>): image in BGR format
     :param cam_cs_record (dict): nuscenes calibration record
-    
     """
     # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     corners_3d = nsutils.bbox_to_corners(boxes)
@@ -257,8 +222,7 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
         img = render_cv2(img, this_box_corners)
         cv2.imshow('image', img)
         cv2.waitKey(1)
-
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def show_2dBoxes_on_image(img_corners_2d, image, 
                           img_corners_3d=None,
                           out_dir=None,
@@ -287,8 +251,7 @@ def show_2dBoxes_on_image(img_corners_2d, image,
             out_file = os.path.join(out_dir, str(img_id)+'_'+str(i)+'.jpg')
             cv2.imwrite(out_file, img)
             continue
-
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def render_cv2(im: np.ndarray,
                 corners: np.ndarray,
                 colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
@@ -328,3 +291,31 @@ def render_cv2(im: np.ndarray,
                 (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
                 colors[0][::-1], linewidth)
     return im
+##------------------------------------------------------------------------------
+def arrange_images_PIL(image_list: list, 
+                       im_size: tuple=(640,360),
+                       grid_size: tuple=(2,2)) -> np.ndarray:
+    """
+    Arranges multiple images into a single image
+    
+    :param image_list: list of images
+    :param im_size: Size of each image in the grid (width, height)
+    :param grid_size: grid size
+    :return: grid image with all images
+    """
+    assert len(image_list) <= grid_size[0]*grid_size[1], \
+        "Provided more images than grid size."
+    
+    nrow = grid_size[0]
+    ncol = grid_size[1]
+    width = im_size[0]
+    height = im_size[1]
+    cvs = Image.new('RGB',(width*ncol, height*nrow))
+
+    for i, image in enumerate(image_list):
+        pil_image = Image.fromarray(image).resize(im_size)
+        px, py = width*(i%ncol), height*int(i/ncol)
+        cvs.paste(pil_image,(px,py))
+
+    cvs.show()
+    return cvs
