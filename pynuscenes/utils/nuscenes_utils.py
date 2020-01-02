@@ -10,7 +10,7 @@ from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, P
 
 
 def bbox_to_corners(bboxes):
-    """
+    """ # TODO: check compatibility
     Convert 3D bounding boxes in [x,y,z,w,l,h,ry] format to [x,y,z] coordinates
     of the corners
     :param bboxes: input boxes np.ndarray <N,7>
@@ -50,7 +50,7 @@ def quaternion_to_ry(quat: Quaternion):
     return yaw
 ##------------------------------------------------------------------------------
 def corners3d_to_image(corners, cam_cs_record, img_shape):
-    """
+    """ # TODO: check compatibility
     Return the 2D box corners mapped to the image plane
     :param corners (np.array <N, 3, 8>)
     :param cam_cs_record (dict): calibrated sensor record of a camera dictionary from nuscenes dataset
@@ -75,7 +75,7 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
     return np.array(cornerList), mask
 ##------------------------------------------------------------------------------
 def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):
-    """
+    """ # TODO: check compatibility
     Convert the 3d box to the 2D bounding box in COCO format (x,y,h,w)
 
     :param view
@@ -137,7 +137,11 @@ def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):
     return bboxes
 ##------------------------------------------------------------------------------
 def nuscene_cat_to_coco(nusc_ann_name):
-    ## Convert nuscene categories to COCO cat, cat_ids and supercats
+    """
+    Convert nuscene categories to COCO cat, cat_id and supercategory
+
+    :param nusc_ann_name (str): Nuscenes annotation name
+    """
     try:
         coco_equivalent = NS_C.COCO_CLASSES[nusc_ann_name]
     except KeyError:
@@ -147,8 +151,9 @@ def nuscene_cat_to_coco(nusc_ann_name):
     coco_supercat = coco_equivalent['supercategory']
     return coco_cat, coco_id, coco_supercat
 ##------------------------------------------------------------------------------
+
 def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'):
-    """
+    """ # TODO: check compatibility
     Convert the 3d box to the 2D bounding box in COCO format (x,y,w,h)
 
     :param view
@@ -215,7 +220,7 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
 
     return bbox
 ##------------------------------------------------------------------------------
-def split_scenes(scenes, split) -> list:
+def split_scenes(scenes, split):
     """
     Get the list of scenes in a split
     
@@ -229,76 +234,170 @@ def split_scenes(scenes, split) -> list:
         #NOTE: mini train and mini val are subsets of train and val
         if scene['name'] in scene_split_names:
             scenes_list.append(scene['token'])
-
     return scenes_list
 ##------------------------------------------------------------------------------
-def pc_to_sensor(pc_orig, cs_record, coordinates='vehicle', ego_pose=None):
+def global_to_vehicle(data, pose_record):
     """
-    Transform the input point cloud from global/vehicle coordinates to
-    sensor coordinates
+    Transform points/boxes from global to vehicle coordinates
 
-    :param pc_orig
-    :param cs_record
-    :param coordinates (string)
-    :ego_pose (dict)
-
+    :param obj: An object of PointCloud or Box class
+    :param pose_record (dict): Vehicle ego-pose dictionary
+    :return obj: Object in the vehicle coordinate system
     """
-    if coordinates == 'global':
-        assert ego_pose is not None, \
-            'ego_pose is required in global coordinates'
-    
-    ## Copy is required to prevent the original pointcloud from being manipulate
-    pc = copy.deepcopy(pc_orig)
-    
-    if isinstance(pc, PointCloud):
-        if coordinates == 'global':
-            ## Transform from global to vehicle
-            pc.translate(np.array(-np.array(ego_pose['translation'])))
-            pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
+    obj = copy.deepcopy(data)    
+    translation_matrix = -np.array(pose_record['translation'])
 
-        ## Transform from vehicle to sensor
-        pc.translate(-np.array(cs_record['translation']))
-        pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
-    elif isinstance(pc, np.ndarray):
-        if coordinates == 'global':
-            ## Transform from global to vehicle
-            for i in range(3):
-                pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose['translation']))[i]
-            pc[:3, :] = np.dot(Quaternion(ego_pose['rotation']).rotation_matrix.T, pc[:3, :])
-        ## Transform from vehicle to sensor
-        for i in range(3):
-            pc[i, :] = pc[i, :] - np.array(cs_record['translation'])[i]
-        pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
-    elif isinstance(pc, list):
-        if len(pc) == 0:
-            return []
-        if isinstance(pc[0], Box):
-            new_list = []
-            for box in pc:
-                if coordinates == 'global':
-                    ## Transform from global to vehicle
-                    box.translate(-np.array(ego_pose['translation']))
-                    box.rotate(Quaternion(ego_pose['rotation']).inverse)
-
-                ## Transform from vehicle to sensor
-                box.translate(-np.array(cs_record['translation']))
-                box.rotate(Quaternion(cs_record['rotation']).inverse)
-                new_list.append(box)
-            return new_list
-    elif isinstance(pc, Box):
-        if coordinates == 'global':
-            ## Transform from global to vehicle
-            pc.translate(-np.array(ego_pose['translation']))
-            pc.rotate(Quaternion(ego_pose['rotation']).inverse)
-        ## Transform from vehicle to sensor
-        pc.translate(-np.array(cs_record['translation']))
-        pc.rotate(Quaternion(cs_record['rotation']).inverse)
+    if isinstance(data, PointCloud):
+        rotation_matrix = Quaternion(pose_record['rotation']).rotation_matrix.T
+    elif isinstance(data, Box):
+        rotation_matrix = Quaternion(pose_record['rotation']).inverse
     else:
-        raise TypeError('cannot filter object with type {}'.format(type(pc)))
-    return pc
+        raise Exception('Input must be a PointCloud or Box object')
+
+    ## Apply the transforms
+    obj.translate(translation_matrix)
+    obj.rotate(rotation_matrix)
+    
+    return obj
+##------------------------------------------------------------------------------
+def vehicle_to_global(data, pose_record):
+    """
+    Transform points/boxes from vehicle to global coordinates
+
+    :param obj: An object of PointCloud or Box class
+    :param pose_record (dict): Vehicle ego-pose dictionary
+    :return obj: Object in the global coordinate system
+    """
+    obj = copy.deepcopy(data)
+    translation_matrix = np.array(pose_record['translation'])
+    
+    if isinstance(data, PointCloud):
+        rotation_matrix = Quaternion(pose_record['rotation']).rotation_matrix
+    elif isinstance(data, Box):
+        rotation_matrix = Quaternion(pose_record['rotation'])
+    else:
+        raise Exception('Input must be a PointCloud or Box object')
+    
+    ## Apply the transforms
+    obj.rotate(rotation_matrix)
+    obj.translate(translation_matrix)
+    
+    return obj
+##------------------------------------------------------------------------------
+def vehicle_to_sensor(data, cs_record):
+    """
+    Transform points/boxes from vehicle to sensor coordinates
+
+    :param obj: An object of PointCloud or Box class
+    :param cs_record (dict): Calibrated sensor record dictionary
+    :return obj: Object in the sensor coordinate system
+    """
+    obj = copy.deepcopy(data)
+    translation_matrix = -np.array(cs_record['translation'])
+
+    if isinstance(data, PointCloud):
+        rotation_matrix = Quaternion(cs_record['rotation']).rotation_matrix.T
+    elif isinstance(data, Box):
+        rotation_matrix = Quaternion(cs_record['rotation']).inverse
+    else:
+        raise Exception('Input must be a PointCloud or Box object')
+
+    ## Apply the transforms
+    obj.translate(translation_matrix)
+    obj.rotate(rotation_matrix)
+    
+    return obj
+##------------------------------------------------------------------------------
+def sensor_to_vehicle(data, cs_record):
+    """
+    Transform points/boxes from sensor to vehicle coordinates
+
+    :param obj: An object of PointCloud or Box class
+    :param cs_record (dict): Calibrated sensor record dictionary
+    :return obj: Object in the vehicle coordinate system
+    """
+    obj = copy.deepcopy(data)
+    translation_matrix = np.array(cs_record['translation'])
+
+    if isinstance(data, PointCloud):
+        rotation_matrix = Quaternion(cs_record['rotation']).rotation_matrix
+    elif isinstance(data, Box):
+        rotation_matrix = Quaternion(cs_record['rotation'])
+    else:
+        raise Exception('Input must be a PointCloud or Box object')
+
+    ## Apply the transforms
+    obj.rotate(rotation_matrix)
+    obj.translate(translation_matrix)
+
+    return obj
+##------------------------------------------------------------------------------
+# def pc_to_sensor(pointcloud, cs_record, coordinates='vehicle', ego_pose=None):
+#     """
+#     Transform the input point cloud from global/vehicle coordinates to
+#     sensor coordinates
+
+#     :param pc
+#     :param cs_record
+#     :param coordinates (string)
+#     :ego_pose (dict)
+#     """
+#     if coordinates == 'global':
+#         assert ego_pose is not None, \
+#             'ego_pose is required in global coordinates'
+    
+#     ## Copy is required to prevent the original pointcloud from being manipulate
+#     pc = copy.deepcopy(pointcloud)
+    
+#     if isinstance(pc, PointCloud):
+#         if coordinates == 'global':
+#             ## Transform from global to vehicle
+#             pc.translate(np.array(-np.array(ego_pose['translation'])))
+#             pc.rotate(Quaternion(ego_pose['rotation']).rotation_matrix.T)
+
+#         ## Transform from vehicle to sensor
+#         pc.translate(-np.array(cs_record['translation']))
+#         pc.rotate(Quaternion(cs_record['rotation']).rotation_matrix.T)
+#     elif isinstance(pc, np.ndarray):
+#         if coordinates == 'global':
+#             ## Transform from global to vehicle
+#             for i in range(3):
+#                 pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose['translation']))[i]
+#             pc[:3, :] = np.dot(Quaternion(ego_pose['rotation']).rotation_matrix.T, pc[:3, :])
+#         ## Transform from vehicle to sensor
+#         for i in range(3):
+#             pc[i, :] = pc[i, :] - np.array(cs_record['translation'])[i]
+#         pc[:3, :] = np.dot(Quaternion(cs_record['rotation']).rotation_matrix.T, pc[:3, :])
+#     elif isinstance(pc, list):
+#         if len(pc) == 0:
+#             return []
+#         if isinstance(pc[0], Box):
+#             new_list = []
+#             for box in pc:
+#                 if coordinates == 'global':
+#                     ## Transform from global to vehicle
+#                     box.translate(-np.array(ego_pose['translation']))
+#                     box.rotate(Quaternion(ego_pose['rotation']).inverse)
+
+#                 ## Transform from vehicle to sensor
+#                 box.translate(-np.array(cs_record['translation']))
+#                 box.rotate(Quaternion(cs_record['rotation']).inverse)
+#                 new_list.append(box)
+#             return new_list
+#     elif isinstance(pc, Box):
+#         if coordinates == 'global':
+#             ## Transform from global to vehicle
+#             pc.translate(-np.array(ego_pose['translation']))
+#             pc.rotate(Quaternion(ego_pose['rotation']).inverse)
+#         ## Transform from vehicle to sensor
+#         pc.translate(-np.array(cs_record['translation']))
+#         pc.rotate(Quaternion(cs_record['rotation']).inverse)
+#     else:
+#         raise TypeError('cannot filter object with type {}'.format(type(pc)))
+#     return pc
 ##--------------------------------------------------------------------------
 def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
-    """
+    """ # TODO: check compatibility
     Filter point cloud to only include the ones mapped inside an image
 
     :param points: pointcloud or box in the coordinate system of the camera
@@ -327,7 +426,7 @@ def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
 ##--------------------------------------------------------------------------
 def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), 
                 img=np.zeros((900,1600,3))):
-    """
+    """ # TODO: check compatibility
     Filter annotations to only include the ones mapped inside an image
 
     :param annotations_orig: annotation boxes

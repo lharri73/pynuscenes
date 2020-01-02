@@ -25,17 +25,23 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     ## Map pointclouds to images
     for i, cam in enumerate(sample['camera']):
         image = cam['image']
-        image = map_pointcloud_to_image(sample['lidar'][0]['pointcloud'],
+        lidar_pc = sample['lidar'][0]['pointcloud']
+        radar_pc = sample['radar'][0]['pointcloud']
+        lidar_pose_rec = sample['lidar'][0]['pose_rec']
+        radar_pose_rec = sample['radar'][0]['pose_rec']
+        image = map_pointcloud_to_image(lidar_pc,
                                         image, 
                                         cam['cs_record'],
-                                        coordinates=coordinates,
-                                        ego_pose=sample['ego_pose'])
-        image = map_pointcloud_to_image(sample['radar'][0]['pointcloud'],
+                                        cam_pose_record=cam['pose_rec'],
+                                        pointsensor_pose_record=lidar_pose_rec,
+                                        coordinates=coordinates)
+        image = map_pointcloud_to_image(radar_pc,
                                         image, 
                                         cam['cs_record'],
-                                        radius=8,
+                                        cam_pose_record=cam['pose_rec'],
+                                        pointsensor_pose_record=radar_pose_rec,
                                         coordinates=coordinates,
-                                        ego_pose=sample['ego_pose'])
+                                        radius=8)
         image_list.append(image)
 
     ## Create figure
@@ -70,6 +76,57 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
     mlab.show(1)
     return fig
 ##------------------------------------------------------------------------------
+def map_pointcloud_to_image(pc, im, cam_cs_record, cam_pose_record, 
+                            pointsensor_pose_record, coordinates='vehicle', 
+                            radius=2):
+    """
+    Given a point sensor (lidar/radar) point cloud and camera image, 
+    map the point cloud to the image.
+    
+    :param pc: point cloud
+    :param im: Camera image.
+    :param cam_cs_record: Camera calibrated sensor record
+    :param cam_pose_record: Ego vehicle pose record for the timestamp of the camera
+    :param pointsensor_pose_record: Ego vehicle pose record for the timestamp of the point sensor
+    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
+    :param radius: Radius of each plotted point in the point cloud
+    :return image: Camera image with mapped point cloud.
+    """
+    
+    ## Transform point cloud into the camera coordinates via global
+    ## First step: transform to global frame if it's not already
+    if coordinates == 'vehicle':
+        pc = nsutils.vehicle_to_global(pc, pointsensor_pose_record)
+    ## Second step: transform to ego vehicle frame for the timestamp of the image
+    pc = nsutils.global_to_vehicle(pc, cam_pose_record)
+    ## Third step: transform into the camera.
+    pc = nsutils.vehicle_to_sensor(pc, cam_cs_record)
+    
+    ## Grab the depths (camera frame z axis points away from the camera).
+    depths = pc.points[2, :]
+    coloring = depths
+
+    ## Take the actual picture
+    points = view_points(pc.points[:3, :], 
+                         np.array(cam_cs_record['camera_intrinsic']), 
+                         normalize=True)
+
+    ## Remove points that are either outside or behind the camera. 
+    mask = np.ones(depths.shape[0], dtype=bool)
+    mask = np.logical_and(mask, depths > 0)
+    mask = np.logical_and(mask, points[0, :] > 1)
+    mask = np.logical_and(mask, points[0, :] < im.shape[1] - 1)
+    mask = np.logical_and(mask, points[1, :] > 1)
+    mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
+    points = points[:, mask]
+    coloring = coloring[mask]
+
+    im = plot_points_on_image(im, points.T, coloring, radius)
+    
+    # plt = draw_pointcloud_on_image(im, points, coloring, radius):
+
+    return im
+##------------------------------------------------------------------------------
 def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
@@ -101,52 +158,15 @@ def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4,
     
     return fig
 ##------------------------------------------------------------------------------
-def map_pointcloud_to_image(pc, im, cam_cs_record, coordinates='vehicle', 
-                            radius=2, ego_pose=None):
-    """
-    Given a point sensor (lidar/radar) point cloud and camera image, 
-    map the point cloud to the image.
-    
-    :param pc: point cloud
-    :param im: Camera image.
-    :param cam_cs_record: Camera calibrated sensor record
-    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
-    :param radius: Radius of each plotted point in the point cloud
-    :param ego_pose: Vehicle's ego-pose if points are in 'global' coordinates
-    :return image: Camera image with mapped point cloud.
-    """
-    ## Transform into the camera.
-    pc = nsutils.pc_to_sensor(pc, cam_cs_record, coordinates=coordinates, 
-                                      ego_pose=ego_pose)
+def draw_pointcloud_on_image(image, points, coloring, dot_size, out_path=None):
+    plt.figure(figsize=(9, 16))
+    plt.imshow(image)
+    plt.scatter(points[0, :], points[1, :], c=coloring, s=dot_size)
+    plt.axis('off')
 
-    ## Grab the depths (camera frame z axis points away from the camera).
-    depths = pc.points[2, :]
-    coloring = depths
-
-    ## Take the actual picture
-    points = view_points(pc.points[:3, :], 
-                         np.array(cam_cs_record['camera_intrinsic']), 
-                         normalize=True)
-
-    ## Remove points that are either outside or behind the camera. 
-    # Leave a margin of 1 pixel for aesthetic reasons.
-    mask = np.ones(depths.shape[0], dtype=bool)
-    mask = np.logical_and(mask, depths > 0)
-    mask = np.logical_and(mask, points[0, :] > 1)
-    mask = np.logical_and(mask, points[0, :] < im.shape[1] - 1)
-    mask = np.logical_and(mask, points[1, :] > 1)
-    mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
-    points = points[:, mask]
-    coloring = coloring[mask]
-
-    im = plot_points_on_image(im, points.T, coloring, radius)
-
-    # plt.figure(figsize=(9, 16))
-    #     plt.imshow(im)
-    #     plt.scatter(points[0, :], points[1, :], c=coloring, s=dot_size)
-    #     plt.axis('off')
-
-    return im
+    if out_path is not None:
+        plt.savefig(out_path)
+    return plt
 ##------------------------------------------------------------------------------
 def plot_points_on_image(image, points, coloring, radius):
     newPoint = [0,0]

@@ -1,5 +1,4 @@
 ## NUSCENES DATASET ############################################################
-DATA_ROOT: "../data/nuscenes"     # path to the nuscenes dataset directory
 VERSION: "v1.0-mini"              # nuscenes dataset version
 SPLIT: "mini_train"               # nuscenes dataset split
 VERBOSE: True                     # enable verbose mode
@@ -10,7 +9,7 @@ COORDINATES: "vehicle"    # coordinate system to return all data in
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
-LIDAR_SWEEPS: 5           # Number of LIDAR sweeps
+LIDAR_SWEEPS: 1           # Number of LIDAR sweeps
 RADAR_SWEEPS: 3           # Number of Radar sweeps
 SENSORS: [                # list of sensor modalities to include in the dataloader
   "CAM_FRONT_LEFT",

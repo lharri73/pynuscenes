@@ -59,7 +59,7 @@ frame = {
         }, ...
     ],
     'anns': [{},...]        # All annotations for this sample
-    'sweeps': dict,         # Sensor sweep tokens (Not implemented yet)
+    'sample_token': str,    # Nuscenes sample token
     'meta': dict,           # Frame meta-data
     'id': int               # Frame ID
 }
@@ -69,31 +69,31 @@ Dataloader frames have the same format as database frame, with the addition of
 sensor data:
 
 ```yaml
-frame = { ## fafdafd
+frame = {
     'camera': [{
-        image: nparray,     # Image from this camera
-        sc_record: dict,    # Camera sensor calibration parameters
+        image: nparray,      # Image from this camera
+        sc_record: dict,     # Camera sensor calibration parameters
+        pose_record: dict,   # Vehicle pose record for the timestamp of the camera
+        img_id: int,         # Image ID
         token: str,
         filename: str,
         channel: str,
         }, ...
     ],
     'lidar': [{
-        pointcloud: ndarray,        # LIDAR Pointcloud
+        pointcloud: ndarray, # LIDAR Pointcloud
+        pose_record: dict,   # Vehicle pose record for the timestamp of the lidar
         token: str,
         filename: str,
         channel: str,
         }, ...
     ],
     'radar': [{
-        pointcloud: ndarray,        # Radar Pointcloud
-        token: str,
-        filename: str,
-        channel: str,
+        pointcloud: ndarray, # Radar Pointcloud
         }, ...
     ],
     'anns': [{},...]
-    'sweeps': dict,
+    'sample_token': str,
     'meta': dict,
     'id': int
 }
