@@ -1,6 +1,6 @@
 ## NUSCENES DATASET ############################################################
 VERSION: "v1.0-mini"              # nuscenes dataset version
-SPLIT: "mini_train"               # nuscenes dataset split
+SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                     # enable verbose mode
 
 ## DATALOADER ##################################################################

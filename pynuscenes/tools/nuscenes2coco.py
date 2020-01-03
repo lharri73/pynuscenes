@@ -8,8 +8,9 @@ from cocoplus.utils.coco_utils import COCO_CATEGORIES
 import pynuscenes.utils.nuscenes_utils as nsutils
 # from pynuscenes.utils.nuscenes_utils import nuscenes_box_to_coco, nuscene_cat_to_coco
 from pynuscenes.nuscenes_dataset import NuscenesDataset
+from pynuscenes.utils.visualize import draw_gt_box_on_image
 from nuscenes.nuscenes import NuScenes
-from pynuscenes.utils import io_utils
+from pynuscenes.utils import log, io_utils
 """
 This script converts NuScenes data to COCO format.
 """
@@ -23,6 +24,7 @@ class CocoConverter:
                 ):
         self.cfg = io_utils.yaml_load(nusc_cfg, safe_load=True)
         self.use_symlinks = use_symlinks
+        self.logger = log.getLogger(__name__)
 
         ## Sanity check
         assert self.cfg.SAMPLE_MODE == 'one_cam', \
@@ -43,9 +45,14 @@ class CocoConverter:
         self.coco_dataset.setCategories(self.CATEGORIES)
     ##--------------------------------------------------------------------------
     def convert(self):
-        ## Get samples from the Nuscenes dataset
+        """
+        Start converting nuscenes_dataset samples to COCO format
+        """
 
-        for sample in self.nusc_dataset:
+        self.logger.info('Converting NuScenes samples to COCO format')
+        ## Get samples from the Nuscenes dataset
+        for ind in trange(len(self.nusc_dataset)):
+            sample = self.nusc_dataset[ind]
             cam = sample['camera'][0]
             image = cam['image']
             cam_cs_rec = cam['cs_record']
@@ -54,7 +61,8 @@ class CocoConverter:
             anns = sample['anns']
 
             ## Create annotation in coco_dataset format
-            this_sample_anns = []        
+            this_sample_anns = []  
+
             for ann in anns:
                 ## Get equivalent coco category name
                 coco_cat, coco_cat_id, coco_supercat = nsutils.nuscene_cat_to_coco(ann.name)
@@ -68,13 +76,15 @@ class CocoConverter:
                 
                 ## Get 2D bbox from the 3D annotation
                 view = np.array(cam_cs_rec['camera_intrinsic'])
-                bbox = nsutils.nuscenes_box_to_coco(ann, view, (img_width, img_height))
+                # bbox = nsutils.box_3d_to_2d(ann, view, (img_width, img_height))
+                bbox = nsutils.box_3d_to_2d_simple(ann, view, (img_width, img_height))
                 if bbox is None:
                     continue
+
                 coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id)
                 this_sample_anns.append(coco_ann)
-
-            ## Get the pointclouds added to dataset
+            
+            ## Get the Radar pointclouds added to dataset
             pc = sample['radar'][0]['pointcloud'].points
             pc_coco = np.transpose(pc).tolist()
 
@@ -90,12 +100,14 @@ class CocoConverter:
             if self.use_symlinks:
                 os.symlink(os.path.abspath(cam['cam_path']), coco_img_path)
             
-            # Uncomment to visualize
-            ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
-            plt.show()
-            input('here')
+            # Uncomment to visualize every sample
+            # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
+            # plt.show()
+            # input('here plot')
 
+        self.logger.info('Saving annotations to disk')
         self.coco_dataset.saveAnnsToDisk()
+        self.logger.info('Conversion complete!')
 ## -----------------------------------------------------------------------------
 def parse_args():
     """

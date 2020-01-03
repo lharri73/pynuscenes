@@ -56,14 +56,14 @@ def map_pointcloud_to_image(pointcloud, im, cam_cs_record, cam_pose_record,
     Given a point sensor (lidar/radar) point cloud and camera image, 
     map the point cloud to the image.
     
-    :param pc: point cloud in vehicle or global coordinates
+    :param pc (PointCloud): point cloud in vehicle or global coordinates
     :param im: Camera image.
-    :param cam_cs_record: Camera calibrated sensor record
-    :param cam_pose_record: Ego vehicle pose record for the timestamp of the camera
-    :param pointsensor_pose_record: Ego vehicle pose record for the timestamp of the point sensor
-    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
-    :param dot_size: size of each point in the point cloud
-    :return points: Mapped and filtered points
+    :param cam_cs_record (dict): Camera calibrated sensor record
+    :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera
+    :param pointsensor_pose_record (dict): Ego vehicle pose record for the timestamp of the point sensor
+    :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 
+    :param dot_size (int): size of each point in the point cloud
+    :return points (nparray): Mapped and filtered points
     """
     pc = copy.deepcopy(pointcloud)
     ## Transform point cloud into the camera coordinates via global
@@ -120,67 +120,68 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
             cornerList.append(this_box_corners)
     return np.array(cornerList), mask
 ##------------------------------------------------------------------------------
-def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):
-    """ # TODO: check compatibility
-    Convert the 3d box to the 2D bounding box in COCO format (x,y,h,w)
+## TODO: to be removed, duplicate of box_3d_to_2d
+# def box_corners_to_2dBox(corners_2d, imsize, mode='xywh'):
+#     """ # TODO: check compatibility
+#     Convert the 3d box to the 2D bounding box in COCO format (x,y,h,w)
 
-    :param view
-    :param imsize: Image size in pixels
-    :param wlh_factor: <float>. Multiply w, l, h by a factor to inflate or deflate the box.
-    :return: <np.float: 2, 4>. Corners of the 2D box
-    """
-    bboxes = []
-    for corner_2d in corners_2d:
-        neighbor_map = {0: [1,3,4], 1: [0,2,5], 2: [1,3,6], 3: [0,2,7],
-                        4: [0,5,7], 5: [1,4,6], 6: [2,5,7], 7: [3,4,6]}
-        border_lines = [[(0,imsize[1]),(0,0)],
-                        [(imsize[0],0),(imsize[0],imsize[1])],
-                        [(imsize[0],imsize[1]),(0,imsize[1])],
-                        [(0,0),(imsize[0],0)]]
+#     :param view
+#     :param imsize: Image size in pixels
+#     :param wlh_factor: <float>. Multiply w, l, h by a factor to inflate or deflate the box.
+#     :return: <np.float: 2, 4>. Corners of the 2D box
+#     """
+#     bboxes = []
+#     for corner_2d in corners_2d:
+#         neighbor_map = {0: [1,3,4], 1: [0,2,5], 2: [1,3,6], 3: [0,2,7],
+#                         4: [0,5,7], 5: [1,4,6], 6: [2,5,7], 7: [3,4,6]}
+#         border_lines = [[(0,imsize[1]),(0,0)],
+#                         [(imsize[0],0),(imsize[0],imsize[1])],
+#                         [(imsize[0],imsize[1]),(0,imsize[1])],
+#                         [(0,0),(imsize[0],0)]]
 
-        # Find corners that are outside image boundaries
-        invisible = np.logical_or(corner_2d[0, :] < 0, corner_2d[0, :] > imsize[0])
-        invisible = np.logical_or(invisible, corner_2d[1, :] > imsize[1])
-        invisible = np.logical_or(invisible, corner_2d[1, :] < 0)
-        ind_invisible = [i for i, x in enumerate(invisible) if x]
-        corner_2d_visible = np.delete(corner_2d, ind_invisible, 1)
+#         # Find corners that are outside image boundaries
+#         invisible = np.logical_or(corner_2d[0, :] < 0, corner_2d[0, :] > imsize[0])
+#         invisible = np.logical_or(invisible, corner_2d[1, :] > imsize[1])
+#         invisible = np.logical_or(invisible, corner_2d[1, :] < 0)
+#         ind_invisible = [i for i, x in enumerate(invisible) if x]
+#         corner_2d_visible = np.delete(corner_2d, ind_invisible, 1)
 
-        # Find intersections with boundary lines
-        for ind in ind_invisible:
-            # intersections = []
-            invis_point = (corner_2d[0, ind], corner_2d[1, ind])
-            for i in neighbor_map[ind]:
-                if i in ind_invisible:
-                    # Both corners outside image boundaries, ignore them
-                    continue
+#         # Find intersections with boundary lines
+#         for ind in ind_invisible:
+#             # intersections = []
+#             invis_point = (corner_2d[0, ind], corner_2d[1, ind])
+#             for i in neighbor_map[ind]:
+#                 if i in ind_invisible:
+#                     # Both corners outside image boundaries, ignore them
+#                     continue
 
-                nbr_point = (corner_2d[0,i], corner_2d[1,i])
-                line = LineString([invis_point, nbr_point])
-                for borderline in border_lines:
-                    intsc = line.intersection(LineString(borderline))
-                    if not intsc.is_empty:
-                        corner_2d_visible = np.append(corner_2d_visible, np.asarray([[intsc.x],[intsc.y]]), 1)
-                        break
+#                 nbr_point = (corner_2d[0,i], corner_2d[1,i])
+#                 line = LineString([invis_point, nbr_point])
+#                 for borderline in border_lines:
+#                     intsc = line.intersection(LineString(borderline))
+#                     if not intsc.is_empty:
+#                         corner_2d_visible = np.append(corner_2d_visible, np.asarray([[intsc.x],[intsc.y]]), 1)
+#                         break
 
-        # Construct a 2D box covering the whole object
-        x_min, y_min = np.amin(corner_2d_visible, 1)
-        x_max, y_max = np.amax(corner_2d_visible, 1)
+#         # Construct a 2D box covering the whole object
+#         x_min, y_min = np.amin(corner_2d_visible, 1)
+#         x_max, y_max = np.amax(corner_2d_visible, 1)
 
-        # Get the box corners
-        corner_2d = np.array([[x_max, x_max, x_min, x_min],
-                            [y_max, y_min, y_min, y_max]])
+#         # Get the box corners
+#         corner_2d = np.array([[x_max, x_max, x_min, x_min],
+#                             [y_max, y_min, y_min, y_max]])
 
-        # Convert to the MS COCO bbox format
-        # bbox = [corner_2d[0,3], corner_2d[1,3],
-        #         corner_2d[0,0]-corner_2d[0,3],corner_2d[1,1]-corner_2d[1,0]]
-        if mode == 'xyxy':
-            bbox = [x_min, y_min, x_max, y_max]
-        elif mode == 'xywh':
-            bbox = [x_min, y_min, abs(x_max-x_min), abs(y_max-y_min)]
-        else: 
-            raise Exception("mode of '{}'' is not supported".format(mode))
-        bboxes.append(bbox)
-    return bboxes
+#         # Convert to the MS COCO bbox format
+#         # bbox = [corner_2d[0,3], corner_2d[1,3],
+#         #         corner_2d[0,0]-corner_2d[0,3],corner_2d[1,1]-corner_2d[1,0]]
+#         if mode == 'xyxy':
+#             bbox = [x_min, y_min, x_max, y_max]
+#         elif mode == 'xywh':
+#             bbox = [x_min, y_min, abs(x_max-x_min), abs(y_max-y_min)]
+#         else: 
+#             raise Exception("mode of '{}'' is not supported".format(mode))
+#         bboxes.append(bbox)
+#     return bboxes
 ##------------------------------------------------------------------------------
 def nuscene_cat_to_coco(nusc_ann_name):
     """
@@ -197,23 +198,66 @@ def nuscene_cat_to_coco(nusc_ann_name):
     coco_supercat = coco_equivalent['supercategory']
     return coco_cat, coco_id, coco_supercat
 ##------------------------------------------------------------------------------
-def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'):
+def box_3d_to_2d_simple(box, p_left, imsize, mode='xywh'):
+        """
+        Projects 3D box into image FOV.
+        :param box: 3D box in camera reference frame.
+        :param p_left: <np.float: 3, 4>. Projection matrix.
+        :param mode (str): 2D bbox fotmat: 'xywh' or 'xyxy'
+        :param imsize: (width, height). Image size.
+        :return bbox: Bounding box in image plane or None if box is not in the image.
+        """
+
+        # Create a new box.
+        box = box.copy()
+
+        # Check that some corners are inside the image.
+        corners = np.array([corner for corner in box.corners().T if corner[2] > 0]).T
+        if len(corners) == 0:
+            return None
+
+        # Project corners that are in front of the camera to 2d to get bbox in pixel coords.
+        imcorners = view_points(corners, p_left, normalize=True)[:2]
+        bbox = (np.min(imcorners[0]), np.min(imcorners[1]), np.max(imcorners[0]), np.max(imcorners[1]))
+
+        # Crop bbox to prevent it extending outside image.
+        bbox_crop = tuple(max(0, b) for b in bbox)
+        bbox_crop = (min(imsize[0], bbox_crop[0]),
+                     min(imsize[0], bbox_crop[1]),
+                     min(imsize[0], bbox_crop[2]),
+                     min(imsize[1], bbox_crop[3]))
+
+        # Detect if a cropped box is empty.
+        if bbox_crop[0] >= bbox_crop[2] or bbox_crop[1] >= bbox_crop[3]:
+            return None
+        
+        if mode == 'xywh':
+            bbox_crop = [bbox_crop[0], bbox_crop[1], 
+                         abs(bbox_crop[2]-bbox_crop[0]), 
+                         abs(bbox_crop[3]-bbox_crop[1])]
+        return bbox_crop
+##------------------------------------------------------------------------------
+def box_3d_to_2d(box, view, imsize, mode='xywh'):
     """ # TODO: check compatibility
-    Convert the 3d box to the 2D bounding box in COCO format (x,y,w,h)
+    Convert a 3d annotation box to its 2D bounding box equivalent
 
-    :param view
-    :param imsize: Image size in pixels
-    :param wlh_factor: <float>. Multiply w, l, h by a factor to inflate or deflate the box.
-    :return: <np.float: 2, 4>. Corners of the 2D box
+    :param box (Box): Annotation box in camera coordinate system
+    :param view (nparray): Camera intrinsics matrix
+    :param imsize (width, height): Image size in pixels
+    :param wlh_factor (float): Multiply w, l, h by a factor to inflate or deflate the box.
+    :return bbox (nparray): 2D bounding box (xywh or xyxy)
     """
-    # corners = np.array([corner for corner in box.corners().T if corner[2] > 0]).T
-    # if len(corners) == 0:
-    #     return None
-    corners_3d = box.corners()
-    corners_2d = view_points(corners_3d, view, normalize=True)[:2,:]
-    if all(corners_2d[0,:]>=imsize[1]) or all(corners_2d[0,:]<0):
-        return None
 
+    corners_3d = box.corners()
+    corners_img = view_points(corners_3d, view, normalize=True)[:2,:]
+
+    # Find corners that are outside image boundaries
+    invisible = np.logical_or(corners_img[0, :] < 0, corners_img[0, :] > imsize[0])
+    invisible = np.logical_or(invisible, corners_img[1, :] > imsize[1])
+    invisible = np.logical_or(invisible, corners_img[1, :] < 0)
+    ind_invisible = [i for i, x in enumerate(invisible) if x]
+    corner_2d_visible = np.delete(corners_img, ind_invisible, 1)
+    
     neighbor_map = {0: [1,3,4], 1: [0,2,5], 2: [1,3,6], 3: [0,2,7],
                     4: [0,5,7], 5: [1,4,6], 6: [2,5,7], 7: [3,4,6]}
     border_lines = [[(0,imsize[1]),(0,0)],
@@ -221,23 +265,16 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
                     [(imsize[0],imsize[1]),(0,imsize[1])],
                     [(0,0),(imsize[0],0)]]
 
-    # Find corners that are outside image boundaries
-    invisible = np.logical_or(corners_2d[0, :] < 0, corners_2d[0, :] > imsize[0])
-    invisible = np.logical_or(invisible, corners_2d[1, :] > imsize[1])
-    invisible = np.logical_or(invisible, corners_2d[1, :] < 0)
-    ind_invisible = [i for i, x in enumerate(invisible) if x]
-    corner_2d_visible = np.delete(corners_2d, ind_invisible, 1)
-    
     # Find intersections with boundary lines
     for ind in ind_invisible:
         # intersections = []
-        invis_point = (corners_2d[0, ind], corners_2d[1, ind])
+        invis_point = (corners_img[0, ind], corners_img[1, ind])
         for i in neighbor_map[ind]:
             if i in ind_invisible:
                 # Both corners outside image boundaries, ignore them
                 continue
 
-            nbr_point = (corners_2d[0,i], corners_2d[1,i])
+            nbr_point = (corners_img[0,i], corners_img[1,i])
             line = LineString([invis_point, nbr_point])
             for borderline in border_lines:
                 intsc = line.intersection(LineString(borderline))
@@ -250,18 +287,18 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
     x_max, y_max = np.amax(corner_2d_visible, 1)
 
     # Get the box corners
-    corners_2d = np.array([[x_max, x_max, x_min, x_min],
-                        [y_max, y_min, y_min, y_max]])
+    # corners_img = np.array([[x_max, x_max, x_min, x_min],
+    #                     [y_max, y_min, y_min, y_max]])
 
     # Convert to the MS COCO bbox format
-    # bbox = [corners_2d[0,3], corners_2d[1,3],
-    #         corners_2d[0,0]-corners_2d[0,3],corners_2d[1,1]-corners_2d[1,0]]
+    # bbox = [corners_img[0,3], corners_img[1,3],
+    #         corners_img[0,0]-corners_img[0,3],corners_img[1,1]-corners_img[1,0]]
     if mode == 'xyxy':
         bbox = [x_min, y_min, x_max, y_max]
     elif mode == 'xywh':
         bbox = [x_min, y_min, abs(x_max-x_min), abs(y_max-y_min)]
     else: 
-        raise Exception("mode of '{}'' is not supported".format(mode))
+        raise Exception("mode of '{}' is not supported".format(mode))
 
     return bbox
 ##------------------------------------------------------------------------------

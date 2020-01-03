@@ -64,6 +64,8 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
         ## Plot annotations on image
         cam_cs_rec = cam['cs_record']      
         for box in sample['anns']:
+            if coordinates=='global':
+                box = nsutils.global_to_vehicle(box, cam['pose_record'])
             box = nsutils.vehicle_to_sensor(box, cam_cs_rec)
             draw_gt_box_on_image(box, image, cam_cs_rec, ax[i])
 
@@ -90,30 +92,24 @@ def visualize_sample_3d(sample, coordinates, fig=None):
     mlab.clf(figure=fig)
     
     ## Draw LIDAR
-    draw_pointcloud_3d(sample['lidar'][0]['pointcloud'].points.T, 
+    visualize_pointcloud_3d(sample['lidar'][0]['pointcloud'].points.T, 
                        fig=fig, 
                        pts_size=3,
                        scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
     ## Draw Radar
-    draw_pointcloud_3d(sample['radar'][0]['pointcloud'].points.T, 
+    visualize_pointcloud_3d(sample['radar'][0]['pointcloud'].points.T, 
                        fig=fig, 
                        pts_color=(1,0,0), 
                        pts_mode='sphere', 
                        pts_size=.5)
 
     ## Draw 3D annotation boxes
-    corner_list = []
-    box_names = []
-    for box in sample['anns']:
-        corner_list.append(np.array(box.corners()))
-        box_names.append(box.name)
-    corner_list = np.swapaxes(np.array(corner_list),1,2)
-    draw_gt_boxes_3d(corner_list, box_names, fig=fig, draw_text=False, 
-                    color=(0,0.85,0.1), line_width=3)
+    visualize_boxes_3d(sample['anns'], fig)
+
     mlab.show(1)
     return fig
 ##------------------------------------------------------------------------------
-def draw_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
+def visualize_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
     Draw lidar points
@@ -146,6 +142,33 @@ def draw_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4,
     
     return fig
 ##------------------------------------------------------------------------------
+def visualize_boxes_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
+    """ 
+    Draw lidar points
+    :parma boxes ([Box]): list of Box objects
+    :param fig: mayavi figure handler
+    :param bgcolor (r,g,b): background color
+    :return fig: created or used fig
+    """
+    import mayavi.mlab as mlab
+
+    if fig is None: 
+        fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
+                          engine=None, size=(1600, 1000))
+    
+    corner_list = []
+    box_names = []
+    for box in boxes:
+        corner_list.append(np.array(box.corners()))
+        box_names.append(box.name)
+    corner_list = np.swapaxes(np.array(corner_list),1,2)
+    draw_boxes_by_corner_3d(corner_list, box_names, fig=fig, draw_text=show_names, 
+                            color=(0,0.85,0.1), line_width=3)
+    # draw origin
+    mlab.points3d(0, 0, 0, color=(0.0, 0.0, 0.8), mode='sphere', scale_factor=3, figure=fig)
+    
+    return fig
+##------------------------------------------------------------------------------
 def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=None):
     """
     Draw points on an image. Points must be already in image coordinates.
@@ -162,21 +185,10 @@ def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=
 
     if out_path is not None:
         save_fig(out_path, format='pdf')
-
 ##------------------------------------------------------------------------------
-## TODO: To be deleted
-# def plot_points_on_image(image, points, coloring, radius):
-#     newPoint = [0,0]
-#     coloring = coloring * 255.0 / 20.0
-#     for i, point in enumerate(points):
-#         newPoint[0], newPoint[1] = int(point[0]), int(point[1])
-#         cv2.circle(image, tuple(newPoint), radius, 
-#                    (int(coloring[i]),0,255-int(coloring[i])), -1)
-#     return image
-##------------------------------------------------------------------------------
-def draw_gt_boxes_3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
-                    line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
-                    color_list=None):
+def draw_boxes_by_corner_3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
+                            line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
+                            color_list=None):
     '''
     Draw 3D bounding boxes
     :param gt_boxes3d: numpy array (n,8,3) for XYZs of the box corners

@@ -26,14 +26,14 @@ def test_dataset():
         # input('here')
         
         ## Render nuscenes_dataset sample using nuscenes_dataset API in 3D
-        # visualize_sample_3d(sample, coordinates='vehicle')
-        # input('press enter to continue')
+        visualize_sample_3d(sample, coordinates='vehicle')
+        input('press enter to continue')
         
         ## Render nuscenes_dataset sample using nuscenes_dataset API in 2D
-        figure = visualize_sample_2d(sample, coordinates='vehicle', out_path='output.jpg')
-        plt.show(block=False)
-        input('press enter to continue')
-        plt.close(fig=figure)
+        # figure = visualize_sample_2d(sample, coordinates='vehicle', out_path='output.jpg')
+        # plt.show(block=False)
+        # input('press enter to continue')
+        # plt.close(fig=figure)
 
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":

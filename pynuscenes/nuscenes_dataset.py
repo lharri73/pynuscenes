@@ -99,7 +99,7 @@ class NuscenesDataset(NuScenes):
               "metadata": metadata}
         
         self.logger.info('Created database in %.1f seconds' % (time.time()-startTime))
-        self.logger.info('Samples in {} split: {}'.format(self.cfg.SPLIT,
+        self.logger.info('Number of samples in {} split: {}'.format(self.cfg.SPLIT,
                                                           str(len(all_frames))))
         ## if an output directory is specified, write to a pkl file
         if out_dir is not None:
