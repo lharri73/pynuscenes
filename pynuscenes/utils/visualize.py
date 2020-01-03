@@ -5,62 +5,101 @@ import copy
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-import mayavi.mlab as mlab
 import matplotlib.pyplot as plt
 from pyquaternion import Quaternion
 from pynuscenes.utils import constants as _C
+from pynuscenes.utils.io_utils import save_fig
 import pynuscenes.utils.nuscenes_utils as nsutils
-from nuscenes.utils.geometry_utils import view_points
+from nuscenes.utils.geometry_utils import view_points, box_in_image
 
 
-def show_sample_data(sample, coordinates='vehicle', fig=None):
+def visualize_sample_2d(sample, coordinates, out_path=None):
     """
-    Render the data from all sensors in a single sample
+    Visualize sample data from all sensors in 2D
+    
+    :param sample [dict]: sample dictionary returned from nuscenes_db
+    :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
+    :return out_path: Path to save the figure at
+    """
+
+    ## Determine the grid size for cameras
+    if len(sample['camera']) == 1:
+        ## Only one image
+        figure, ax = plt.subplots(1, 1, figsize=(16, 9))
+        ax = [ax]
+    else:
+        ## 6 images in two rows
+        figure, ax = plt.subplots(2, 3, figsize=(16, 9))
+        ax = ax.ravel()
+
+    ## Plot pointclouds on image
+    for i, cam in enumerate(sample['camera']):
+        image = cam['image']
+        
+        ## Plot LIDAR data
+        if len(sample['lidar']) > 0:
+            lidar_pc = sample['lidar'][0]['pointcloud']
+            lidar_pose_rec = sample['lidar'][0]['pose_record']
+            lidar_pc, color = nsutils.map_pointcloud_to_image(lidar_pc,
+                                            image, 
+                                            cam['cs_record'],
+                                            cam_pose_record=cam['pose_record'],
+                                            pointsensor_pose_record=lidar_pose_rec,
+                                            coordinates=coordinates)
+            draw_points_on_image(image, lidar_pc, color, ax=ax[i], dot_size=2)
+
+        ## Plot Radar data
+        if len(sample['radar']) > 0:
+            radar_pc = sample['radar'][0]['pointcloud']
+            radar_pose_rec = sample['radar'][0]['pose_record']
+            radar_pc, color = nsutils.map_pointcloud_to_image(radar_pc,
+                                            image, 
+                                            cam['cs_record'],
+                                            cam_pose_record=cam['pose_record'],
+                                            pointsensor_pose_record=radar_pose_rec,
+                                            coordinates=coordinates,
+                                            dot_size=15)
+            draw_points_on_image(image, radar_pc, color, ax=ax[i], dot_size=18)
+        
+        ## Plot annotations on image
+        cam_cs_rec = cam['cs_record']      
+        for box in sample['anns']:
+            box = nsutils.vehicle_to_sensor(box, cam_cs_rec)
+            draw_gt_box_on_image(box, image, cam_cs_rec, ax[i])
+
+    ## Display and save the figures
+    if out_path is not None:
+        save_fig('output.jpg',fig=figure, format='jpg')
+    
+    return figure
+##------------------------------------------------------------------------------
+def visualize_sample_3d(sample, coordinates, fig=None):
+    """
+    Visualize sample data from all sensors in 3D using mayavi
     
     :param sample [dict]: sample dictionary returned from nuscenes_db
     :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
     :fig: An mayavi mlab figure object to display the 3D pointclouds on
     """
-    image_list = []
-    ## Map pointclouds to images
-    for i, cam in enumerate(sample['camera']):
-        image = cam['image']
-        lidar_pc = sample['lidar'][0]['pointcloud']
-        radar_pc = sample['radar'][0]['pointcloud']
-        lidar_pose_rec = sample['lidar'][0]['pose_rec']
-        radar_pose_rec = sample['radar'][0]['pose_rec']
-        image = map_pointcloud_to_image(lidar_pc,
-                                        image, 
-                                        cam['cs_record'],
-                                        cam_pose_record=cam['pose_rec'],
-                                        pointsensor_pose_record=lidar_pose_rec,
-                                        coordinates=coordinates)
-        image = map_pointcloud_to_image(radar_pc,
-                                        image, 
-                                        cam['cs_record'],
-                                        cam_pose_record=cam['pose_rec'],
-                                        pointsensor_pose_record=radar_pose_rec,
-                                        coordinates=coordinates,
-                                        radius=8)
-        image_list.append(image)
+    import mayavi.mlab as mlab
 
-    ## Create figure
+    ## Create 3D figure
     if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(1,1,1), fgcolor=None, 
                           engine=None, size=(1600, 1000))
     mlab.clf(figure=fig)
     
     ## Draw LIDAR
-    draw_pointcloud(sample['lidar'][0]['pointcloud'].points.T, 
-                    fig=fig, 
-                    pts_size=3,
-                    scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
+    draw_pointcloud_3d(sample['lidar'][0]['pointcloud'].points.T, 
+                       fig=fig, 
+                       pts_size=3,
+                       scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
     ## Draw Radar
-    draw_pointcloud(sample['radar'][0]['pointcloud'].points.T, 
-                    fig=fig, 
-                    pts_color=(1,0,0), 
-                    pts_mode='sphere', 
-                    pts_size=.5)
+    draw_pointcloud_3d(sample['radar'][0]['pointcloud'].points.T, 
+                       fig=fig, 
+                       pts_color=(1,0,0), 
+                       pts_mode='sphere', 
+                       pts_size=.5)
 
     ## Draw 3D annotation boxes
     corner_list = []
@@ -69,65 +108,12 @@ def show_sample_data(sample, coordinates='vehicle', fig=None):
         corner_list.append(np.array(box.corners()))
         box_names.append(box.name)
     corner_list = np.swapaxes(np.array(corner_list),1,2)
-    draw_gt_boxes3d(corner_list, box_names, fig=fig, draw_text=False, 
+    draw_gt_boxes_3d(corner_list, box_names, fig=fig, draw_text=False, 
                     color=(0,0.85,0.1), line_width=3)
-    
-    image = arrange_images_PIL(image_list, grid_size=(2,3))
     mlab.show(1)
     return fig
 ##------------------------------------------------------------------------------
-def map_pointcloud_to_image(pc, im, cam_cs_record, cam_pose_record, 
-                            pointsensor_pose_record, coordinates='vehicle', 
-                            radius=2):
-    """
-    Given a point sensor (lidar/radar) point cloud and camera image, 
-    map the point cloud to the image.
-    
-    :param pc: point cloud
-    :param im: Camera image.
-    :param cam_cs_record: Camera calibrated sensor record
-    :param cam_pose_record: Ego vehicle pose record for the timestamp of the camera
-    :param pointsensor_pose_record: Ego vehicle pose record for the timestamp of the point sensor
-    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
-    :param radius: Radius of each plotted point in the point cloud
-    :return image: Camera image with mapped point cloud.
-    """
-    
-    ## Transform point cloud into the camera coordinates via global
-    ## First step: transform to global frame if it's not already
-    if coordinates == 'vehicle':
-        pc = nsutils.vehicle_to_global(pc, pointsensor_pose_record)
-    ## Second step: transform to ego vehicle frame for the timestamp of the image
-    pc = nsutils.global_to_vehicle(pc, cam_pose_record)
-    ## Third step: transform into the camera.
-    pc = nsutils.vehicle_to_sensor(pc, cam_cs_record)
-    
-    ## Grab the depths (camera frame z axis points away from the camera).
-    depths = pc.points[2, :]
-    coloring = depths
-
-    ## Take the actual picture
-    points = view_points(pc.points[:3, :], 
-                         np.array(cam_cs_record['camera_intrinsic']), 
-                         normalize=True)
-
-    ## Remove points that are either outside or behind the camera. 
-    mask = np.ones(depths.shape[0], dtype=bool)
-    mask = np.logical_and(mask, depths > 0)
-    mask = np.logical_and(mask, points[0, :] > 1)
-    mask = np.logical_and(mask, points[0, :] < im.shape[1] - 1)
-    mask = np.logical_and(mask, points[1, :] > 1)
-    mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
-    points = points[:, mask]
-    coloring = coloring[mask]
-
-    im = plot_points_on_image(im, points.T, coloring, radius)
-    
-    # plt = draw_pointcloud_on_image(im, points, coloring, radius):
-
-    return im
-##------------------------------------------------------------------------------
-def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
+def draw_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
     Draw lidar points
@@ -137,6 +123,8 @@ def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4,
     :param fig: mayavi figure handler, if None create new one otherwise will use it
     :return fig: created or used fig
     """
+    import mayavi.mlab as mlab
+
     if fig is None: 
         fig = mlab.figure(figure=None, bgcolor=bgcolor, fgcolor=None,
                           engine=None, size=(1600, 1000))
@@ -158,26 +146,35 @@ def draw_pointcloud(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4,
     
     return fig
 ##------------------------------------------------------------------------------
-def draw_pointcloud_on_image(image, points, coloring, dot_size, out_path=None):
-    plt.figure(figsize=(9, 16))
-    plt.imshow(image)
-    plt.scatter(points[0, :], points[1, :], c=coloring, s=dot_size)
-    plt.axis('off')
+def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=None):
+    """
+    Draw points on an image. Points must be already in image coordinates.
+    """
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(9, 16))
+
+    ax.margins(x=0,y=0)
+    ax.imshow(image)
+
+    # colors = np.minimum(1, dists / axes_limit / np.sqrt(2))
+    ax.scatter(points[0, :], points[1, :], c=colors, s=dot_size)
+    ax.axis('off')
 
     if out_path is not None:
-        plt.savefig(out_path)
-    return plt
+        save_fig(out_path, format='pdf')
+
 ##------------------------------------------------------------------------------
-def plot_points_on_image(image, points, coloring, radius):
-    newPoint = [0,0]
-    coloring = coloring * 255.0 / 20.0
-    for i, point in enumerate(points):
-        newPoint[0], newPoint[1] = int(point[0]), int(point[1])
-        cv2.circle(image, tuple(newPoint), radius, 
-                   (int(coloring[i]),0,255-int(coloring[i])), -1)
-    return image
+## TODO: To be deleted
+# def plot_points_on_image(image, points, coloring, radius):
+#     newPoint = [0,0]
+#     coloring = coloring * 255.0 / 20.0
+#     for i, point in enumerate(points):
+#         newPoint[0], newPoint[1] = int(point[0]), int(point[1])
+#         cv2.circle(image, tuple(newPoint), radius, 
+#                    (int(coloring[i]),0,255-int(coloring[i])), -1)
+#     return image
 ##------------------------------------------------------------------------------
-def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
+def draw_gt_boxes_3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
                     line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
                     color_list=None):
     '''
@@ -192,6 +189,8 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
     :param color_list: a list of RGB tuple, if not None, overwrite color.
     :return fig: updated fig
     ''' 
+    import mayavi.mlab as mlab
+
     if fig is None:
         fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, 
                           engine=None, size=(1600, 1000))
@@ -226,6 +225,32 @@ def draw_gt_boxes3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
               focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], 
               distance=62.0, figure=fig)
     return fig
+##------------------------------------------------------------------------------
+def draw_gt_box_on_image(box, img, cam_cs_record, ax=None):
+    """
+    Show 3D boxes on the image. Boxes must be in camera's coordinate system
+    :param boxes (Box): 3D boxes 
+    :param img (ndarray<H,W,3>): image in BGR format
+    :param cam_cs_record (dict): Camera cs_record
+    :param ax (pyplot ax): Axes onto which to render
+    """
+    cam_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
+    if not box_in_image(box, cam_intrinsic, (1600, 900)):
+        return
+    
+    ## Init axes
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(9, 16))
+    # Show image.
+    ax.imshow(img)
+    # Show boxes.
+    box.render(ax, view=cam_intrinsic, normalize=True)
+
+    # Limit visible range.
+    ax.set_xlim(0, img.shape[1])
+    ax.set_ylim(img.shape[0], 0)
+    ax.axis('off')
+    ax.set_aspect('equal')
 ##------------------------------------------------------------------------------
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
     """
@@ -272,45 +297,45 @@ def show_2dBoxes_on_image(img_corners_2d, image,
             cv2.imwrite(out_file, img)
             continue
 ##------------------------------------------------------------------------------
-def render_cv2(im: np.ndarray,
-                corners: np.ndarray,
-                colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
-                linewidth: int = 2) -> None:
-    """
-    Renders box using OpenCV2.
-    :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
-    :param corners: 
-    :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
-    :param linewidth: Linewidth for plot.
-    """
-    def draw_rect(selected_corners, color):
-        prev = selected_corners[-1]
-        for corner in selected_corners:
-            cv2.line(im,
-                        (int(prev[0]), int(prev[1])),
-                        (int(corner[0]), int(corner[1])),
-                        color, linewidth)
-            prev = corner
+# def render_cv2(im: np.ndarray,
+#                 corners: np.ndarray,
+#                 colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
+#                 linewidth: int = 2) -> None:
+#     """
+#     Renders box using OpenCV2.
+#     :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
+#     :param corners: 
+#     :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
+#     :param linewidth: Linewidth for plot.
+#     """
+#     def draw_rect(selected_corners, color):
+#         prev = selected_corners[-1]
+#         for corner in selected_corners:
+#             cv2.line(im,
+#                         (int(prev[0]), int(prev[1])),
+#                         (int(corner[0]), int(corner[1])),
+#                         color, linewidth)
+#             prev = corner
 
-    # Draw the sides
-    for i in range(4):
-        cv2.line(im,
-                    (int(corners.T[i][0]), int(corners.T[i][1])),
-                    (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
-                    colors[2][::-1], linewidth)
+#     # Draw the sides
+#     for i in range(4):
+#         cv2.line(im,
+#                     (int(corners.T[i][0]), int(corners.T[i][1])),
+#                     (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
+#                     colors[2][::-1], linewidth)
 
-    # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
-    draw_rect(corners.T[:4], colors[0][::-1])
-    draw_rect(corners.T[4:], colors[1][::-1])
+#     # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
+#     draw_rect(corners.T[:4], colors[0][::-1])
+#     draw_rect(corners.T[4:], colors[1][::-1])
 
-    # Draw line indicating the front
-    center_bottom_forward = np.mean(corners.T[2:4], axis=0)
-    center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-    cv2.line(im,
-                (int(center_bottom[0]), int(center_bottom[1])),
-                (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
-                colors[0][::-1], linewidth)
-    return im
+#     # Draw line indicating the front
+#     center_bottom_forward = np.mean(corners.T[2:4], axis=0)
+#     center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
+#     cv2.line(im,
+#                 (int(center_bottom[0]), int(center_bottom[1])),
+#                 (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
+#                 colors[0][::-1], linewidth)
+#     return im
 ##------------------------------------------------------------------------------
 def arrange_images_PIL(image_list: list, 
                        im_size: tuple=(640,360),

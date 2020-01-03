@@ -49,6 +49,52 @@ def quaternion_to_ry(quat: Quaternion):
     yaw = np.arctan2(v[1], v[0])
     return yaw
 ##------------------------------------------------------------------------------
+def map_pointcloud_to_image(pointcloud, im, cam_cs_record, cam_pose_record, 
+                            pointsensor_pose_record=None, coordinates='vehicle', 
+                            dot_size=2):
+    """
+    Given a point sensor (lidar/radar) point cloud and camera image, 
+    map the point cloud to the image.
+    
+    :param pc: point cloud in vehicle or global coordinates
+    :param im: Camera image.
+    :param cam_cs_record: Camera calibrated sensor record
+    :param cam_pose_record: Ego vehicle pose record for the timestamp of the camera
+    :param pointsensor_pose_record: Ego vehicle pose record for the timestamp of the point sensor
+    :param coordinates [str]: Point cloud coordinates ('vehicle', 'global') 
+    :param dot_size: size of each point in the point cloud
+    :return points: Mapped and filtered points
+    """
+    pc = copy.deepcopy(pointcloud)
+    ## Transform point cloud into the camera coordinates via global
+    ## First step: transform to global frame if it's not already
+    if coordinates == 'vehicle':
+        assert pointsensor_pose_record is not None, 'Erroe: pointsensor_pose_record is required.'
+        pc = vehicle_to_global(pc, pointsensor_pose_record)
+    ## Second step: transform to ego vehicle frame for the timestamp of the image
+    pc = global_to_vehicle(pc, cam_pose_record)
+    ## Third step: transform into the camera.
+    pc = vehicle_to_sensor(pc, cam_cs_record)
+    
+    ## Grab the depths (camera frame z axis points away from the camera).
+    depths = pc.points[2, :]
+
+    ## Take the actual picture
+    cam_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
+    points = view_points(pc.points[:3, :], cam_intrinsic, normalize=True)
+
+    ## Remove points that are either outside or behind the camera. 
+    mask = np.ones(depths.shape[0], dtype=bool)
+    mask = np.logical_and(mask, depths > 0)
+    mask = np.logical_and(mask, points[0, :] > 1)
+    mask = np.logical_and(mask, points[0, :] < im.shape[1] - 1)
+    mask = np.logical_and(mask, points[1, :] > 1)
+    mask = np.logical_and(mask, points[1, :] < im.shape[0] - 1)
+    points = points[:, mask]
+    depths = depths[mask]
+
+    return points, depths
+##------------------------------------------------------------------------------
 def corners3d_to_image(corners, cam_cs_record, img_shape):
     """ # TODO: check compatibility
     Return the 2D box corners mapped to the image plane
@@ -151,7 +197,6 @@ def nuscene_cat_to_coco(nusc_ann_name):
     coco_supercat = coco_equivalent['supercategory']
     return coco_cat, coco_id, coco_supercat
 ##------------------------------------------------------------------------------
-
 def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'):
     """ # TODO: check compatibility
     Convert the 3d box to the 2D bounding box in COCO format (x,y,w,h)
@@ -161,14 +206,14 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
     :param wlh_factor: <float>. Multiply w, l, h by a factor to inflate or deflate the box.
     :return: <np.float: 2, 4>. Corners of the 2D box
     """
-    # box = copy.deepcopy(box)
     # corners = np.array([corner for corner in box.corners().T if corner[2] > 0]).T
     # if len(corners) == 0:
     #     return None
-    corner_2d = view_points(box.corners(), view, normalize=True)[:2]
-    # bbox = (np.min(imcorners[0]), np.min(imcorners[1]), np.max(imcorners[0]), np.max(imcorners[1]))
-    # corner_2d = imcorners
- 
+    corners_3d = box.corners()
+    corners_2d = view_points(corners_3d, view, normalize=True)[:2,:]
+    if all(corners_2d[0,:]>=imsize[1]) or all(corners_2d[0,:]<0):
+        return None
+
     neighbor_map = {0: [1,3,4], 1: [0,2,5], 2: [1,3,6], 3: [0,2,7],
                     4: [0,5,7], 5: [1,4,6], 6: [2,5,7], 7: [3,4,6]}
     border_lines = [[(0,imsize[1]),(0,0)],
@@ -177,22 +222,22 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
                     [(0,0),(imsize[0],0)]]
 
     # Find corners that are outside image boundaries
-    invisible = np.logical_or(corner_2d[0, :] < 0, corner_2d[0, :] > imsize[0])
-    invisible = np.logical_or(invisible, corner_2d[1, :] > imsize[1])
-    invisible = np.logical_or(invisible, corner_2d[1, :] < 0)
+    invisible = np.logical_or(corners_2d[0, :] < 0, corners_2d[0, :] > imsize[0])
+    invisible = np.logical_or(invisible, corners_2d[1, :] > imsize[1])
+    invisible = np.logical_or(invisible, corners_2d[1, :] < 0)
     ind_invisible = [i for i, x in enumerate(invisible) if x]
-    corner_2d_visible = np.delete(corner_2d, ind_invisible, 1)
-
+    corner_2d_visible = np.delete(corners_2d, ind_invisible, 1)
+    
     # Find intersections with boundary lines
     for ind in ind_invisible:
         # intersections = []
-        invis_point = (corner_2d[0, ind], corner_2d[1, ind])
+        invis_point = (corners_2d[0, ind], corners_2d[1, ind])
         for i in neighbor_map[ind]:
             if i in ind_invisible:
                 # Both corners outside image boundaries, ignore them
                 continue
 
-            nbr_point = (corner_2d[0,i], corner_2d[1,i])
+            nbr_point = (corners_2d[0,i], corners_2d[1,i])
             line = LineString([invis_point, nbr_point])
             for borderline in border_lines:
                 intsc = line.intersection(LineString(borderline))
@@ -205,12 +250,12 @@ def nuscenes_box_to_coco(box, view, imsize, wlh_factor: float = 1.0, mode='xywh'
     x_max, y_max = np.amax(corner_2d_visible, 1)
 
     # Get the box corners
-    corner_2d = np.array([[x_max, x_max, x_min, x_min],
+    corners_2d = np.array([[x_max, x_max, x_min, x_min],
                         [y_max, y_min, y_min, y_max]])
 
     # Convert to the MS COCO bbox format
-    # bbox = [corner_2d[0,3], corner_2d[1,3],
-    #         corner_2d[0,0]-corner_2d[0,3],corner_2d[1,1]-corner_2d[1,0]]
+    # bbox = [corners_2d[0,3], corners_2d[1,3],
+    #         corners_2d[0,0]-corners_2d[0,3],corners_2d[1,1]-corners_2d[1,0]]
     if mode == 'xyxy':
         bbox = [x_min, y_min, x_max, y_max]
     elif mode == 'xywh':
@@ -396,7 +441,7 @@ def sensor_to_vehicle(data, cs_record):
 #         raise TypeError('cannot filter object with type {}'.format(type(pc)))
 #     return pc
 ##--------------------------------------------------------------------------
-def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
+def filter_points(pointcloud, cam_cs_record, img_shape=(1600,900)):
     """ # TODO: check compatibility
     Filter point cloud to only include the ones mapped inside an image
 
@@ -404,25 +449,29 @@ def filter_points(points_orig, cam_cs_record, img_shape=(1600,900)):
     :param cam_cs_record: calibrated sensor record of the camera to filter to
     :param img_shape: shape of the image (width, height)
     """
-    if isinstance(points_orig, np.ndarray):
-        points = pc_to_sensor(points_orig, cam_cs_record)
-        viewed_points = view_points(points[:3, :], 
-                                np.array(cam_cs_record['camera_intrinsic']), 
-                                normalize=True)
-        visible = np.logical_and(viewed_points[0, :] > 0, 
-                                    viewed_points[0, :] < img_shape[0])
-        visible = np.logical_and(visible, viewed_points[1, :] < img_shape[1])
-        visible = np.logical_and(visible, viewed_points[1, :] > 0)
-        visible = np.logical_and(visible, points[2, :] > 1)
-        in_front = points[2, :] > 0.1  
-        # True if a corner is at least 0.1 meter in front of the camera.
-        
-        isVisible = np.logical_and(visible, in_front)
-        points_orig = points_orig.T[isVisible]
-        points_orig = points_orig.T
-        return points_orig
+    if isinstance(pointcloud, LidarPointCloud) or isinstance(pointcloud, RadarPointCloud):
+        points = pointcloud.points[:3,:]
     else:
-        raise TypeError('{} is not able to be filtered'.format(type(points)))
+        points = pointcloud
+    
+    print(pointcloud.shape)
+    input('here')
+
+    cam_intrinsics = np.array(cam_cs_record['camera_intrinsic'])
+    points = view_points(points[:3, :], cam_intrinsics, normalize=True)
+
+    visible = np.logical_and(points[0, :] > 0, points[0, :] < img_shape[0])
+    visible = np.logical_and(visible, points[1, :] < img_shape[1])
+    visible = np.logical_and(visible, points[1, :] > 0)
+    visible = np.logical_and(visible, points[2, :] > 1)
+    in_front = points[2, :] > 0.1  # point at least 0.1m in front of the camera
+    isVisible = np.logical_and(visible, in_front)
+    
+    pc = pointcloud.T[isVisible]
+    pc = pc.T
+    print(pc.shape)
+    input('here')
+    return pointcloud
 ##--------------------------------------------------------------------------
 def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), 
                 img=np.zeros((900,1600,3))):

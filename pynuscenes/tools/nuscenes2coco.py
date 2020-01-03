@@ -5,7 +5,8 @@ from tqdm import trange
 import matplotlib.pyplot as plt
 from cocoplus.coco import COCO_PLUS
 from cocoplus.utils.coco_utils import COCO_CATEGORIES
-from pynuscenes.utils.nuscenes_utils import nuscenes_box_to_coco, nuscene_cat_to_coco
+import pynuscenes.utils.nuscenes_utils as nsutils
+# from pynuscenes.utils.nuscenes_utils import nuscenes_box_to_coco, nuscene_cat_to_coco
 from pynuscenes.nuscenes_dataset import NuscenesDataset
 from nuscenes.nuscenes import NuScenes
 from pynuscenes.utils import io_utils
@@ -27,8 +28,8 @@ class CocoConverter:
         assert self.cfg.SAMPLE_MODE == 'one_cam', \
             'SAMPLE_MODE must be one_cam for CocoConverter'
 
+        ## Create nuscenes and coco dataset instances
         self.nusc_dataset = NuscenesDataset(nusc_root, cfg=nusc_cfg)    
-        ## Create an empty COCO dataset
         self.coco_dataset = COCO_PLUS(logging_level="INFO")
         self.coco_dataset.create_new_dataset(dataset_dir=output_dir,
                                              split=self.cfg.SPLIT)
@@ -45,47 +46,54 @@ class CocoConverter:
         ## Get samples from the Nuscenes dataset
 
         for sample in self.nusc_dataset:
-            for i, cam_sample in enumerate(sample['camera']):
-                img_id = cam_sample['img_id']
-                image = cam_sample['image']
-                cam_cs_record = cam_sample['cs_record']
-                img_height, img_width, _ = image.shape
-                pc = sample['radar'][0]['pointcloud'].points
+            cam = sample['camera'][0]
+            image = cam['image']
+            cam_cs_rec = cam['cs_record']
+            cam_pose_rec = cam['pose_record']
+            img_height, img_width, _ = image.shape
+            anns = sample['anns']
+
+            ## Create annotation in coco_dataset format
+            this_sample_anns = []        
+            for ann in anns:
+                ## Get equivalent coco category name
+                coco_cat, coco_cat_id, coco_supercat = nsutils.nuscene_cat_to_coco(ann.name)
+                if coco_cat is None:
+                    continue
                 
-                # Create annotation in coco_dataset format
-                this_sample_anns = []
-                annotations = self.nusc_dataset.pc_to_sensor(sample['annotations'][i], 
-                                                        cam_cs_record)
+                ## Take annotations to the camera frame
+                if self.cfg.COORDINATES == 'global':
+                    ann = nsutils.global_to_vehicle(ann, cam_pose_rec)
+                ann = nsutils.vehicle_to_sensor(ann, cam_cs_rec)
+                
+                ## Get 2D bbox from the 3D annotation
+                view = np.array(cam_cs_rec['camera_intrinsic'])
+                bbox = nsutils.nuscenes_box_to_coco(ann, view, (img_width, img_height))
+                if bbox is None:
+                    continue
+                coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id)
+                this_sample_anns.append(coco_ann)
+
+            ## Get the pointclouds added to dataset
+            pc = sample['radar'][0]['pointcloud'].points
+            pc_coco = np.transpose(pc).tolist()
+
+            ## Add sample to the COCO dataset
+            img_id = cam['img_id']
+            coco_img_path = self.coco_dataset.addSample(img=image,
+                                        anns=this_sample_anns, 
+                                        pointcloud=pc_coco,
+                                        img_id=img_id,
+                                        other=cam_cs_rec,
+                                        img_format='RGB',
+                                        write_img= not self.use_symlinks)            
+            if self.use_symlinks:
+                os.symlink(os.path.abspath(cam['cam_path']), coco_img_path)
             
-                for ann in annotations:
-                    coco_cat, coco_cat_id, coco_supercat = nuscene_cat_to_coco(ann.name)
-                    if coco_cat is None:
-                        continue
-                    
-                    bbox = nuscenes_box_to_coco(ann, np.array(cam_cs_record['camera_intrinsic']), 
-                                                (img_width, img_height))
-                    coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id)
-                    this_sample_anns.append(coco_ann)
-
-                ## Get the pointclouds added to dataset
-                pc_coco = np.transpose(pc).tolist()
-
-                ## Add sample to the COCO dataset
-                coco_img_path = self.coco_dataset.addSample(img=image,
-                                            anns=this_sample_anns, 
-                                            pointcloud=pc_coco,
-                                            img_id=img_id,
-                                            other=cam_cs_record,
-                                            img_format='RGB',
-                                            write_img= not self.use_symlinks,
-                                            )            
-                if self.use_symlinks:
-                    os.symlink(os.path.abspath(cam_sample['cam_path']), coco_img_path)
-                
-                ## Uncomment to visualize
-                # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
-                # plt.show()
-                # input('here')
+            # Uncomment to visualize
+            ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
+            plt.show()
+            input('here')
 
         self.coco_dataset.saveAnnsToDisk()
 ## -----------------------------------------------------------------------------

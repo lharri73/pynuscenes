@@ -172,7 +172,7 @@ class NuscenesDataset(NuScenes):
             image, cs_record, pose_rec, filename = self._get_cam_data(cam['token'])
             frame['camera'][i]['image'] = image
             frame['camera'][i]['cs_record'] = cs_record
-            frame['camera'][i]['pose_rec'] = pose_rec
+            frame['camera'][i]['pose_record'] = pose_rec
             frame['camera'][i]['filename'] = filename
             frame['camera'][i]['img_id'] = self.img_id
             self.img_id += 1
@@ -185,7 +185,7 @@ class NuscenesDataset(NuScenes):
                                                             self.cfg.LIDAR_SWEEPS)
             frame['lidar'][i]['pointcloud'] = lidar_pc
             frame['lidar'][i]['cs_record'] = lidar_cs
-            frame['lidar'][i]['pose_rec'] = pose_rec
+            frame['lidar'][i]['pose_record'] = pose_rec
 
         ## Get Radar data
         all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
@@ -198,7 +198,7 @@ class NuscenesDataset(NuScenes):
         ## TODO: since different Radar point clouds are merged, 
         ## pose_rec for the last Radar is saved as the pose_rec.
         frame['radar'] = [{'pointcloud':all_radar_pcs, 
-                           'pose_rec': pose_rec}]
+                           'pose_record': pose_rec}]
         ## Get annotations
         frame['anns'] = self._get_annotations(frame['lidar'][0]['token'])
         
