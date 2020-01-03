@@ -17,23 +17,32 @@ def test_dataset():
         ## Render sample using nuscenes devkit API
         # sample_token = sample['sample_token']
         # mini_dataset_vehicle.render_sample(sample_token)
-        # plt.show()
+        # plt.show(block=False)
+
+        sample_data_token = sample['camera'][0]['token']
+        mini_dataset_vehicle.render_sample_data(sample_data_token)
+        plt.show(block=False)
+
         # mini_dataset_vehicle.render_pointcloud_in_image(sample['sample_token'],
         #                                                 pointsensor_channel = 'RADAR_FRONT',
         #                                                 camera_channel = 'CAM_FRONT',
         #                                                 dot_size = 8)
         # plt.show()
         # input('here')
-        
+
         ## Render nuscenes_dataset sample using nuscenes_dataset API in 3D
-        visualize_sample_3d(sample, coordinates='vehicle')
+        # visualize_sample_3d(sample, 
+        #                     coordinates=mini_dataset_vehicle.cfg.COORDINATES)
         input('press enter to continue')
         
         ## Render nuscenes_dataset sample using nuscenes_dataset API in 2D
-        # figure = visualize_sample_2d(sample, coordinates='vehicle', out_path='output.jpg')
-        # plt.show(block=False)
-        # input('press enter to continue')
-        # plt.close(fig=figure)
+        print(sample)
+        figure = visualize_sample_2d(sample, 
+                                     coordinates=mini_dataset_vehicle.cfg.COORDINATES, 
+                                     out_path='output.jpg')
+        plt.show(block=False)
+        input('press enter to continue')
+        plt.close(fig=figure)
 
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":

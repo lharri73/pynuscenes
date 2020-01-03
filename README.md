@@ -60,6 +60,7 @@ frame = {
     ],
     'anns': [{},...]        # All annotations for this sample
     'sample_token': str,    # Nuscenes sample token
+    'coordinates': str,      # Reference coordinate system ('vehicle', 'global')
     'meta': dict,           # Frame meta-data
     'id': int               # Frame ID
 }
@@ -90,10 +91,12 @@ frame = {
     ],
     'radar': [{
         pointcloud: ndarray, # Radar Pointcloud
+        pose_record: dict,   # Vehicle pose record for the timestamp of Radar
         }, ...
     ],
     'anns': [{},...]
     'sample_token': str,
+    'coordinates': str,
     'meta': dict,
     'id': int
 }

@@ -1,10 +1,10 @@
 ## NUSCENES DATASET ############################################################
-VERSION: "v1.0-mini"              # nuscenes dataset version
+VERSION: "v1.0-mini"            # nuscenes dataset version
 SPLIT: "mini_val"               # nuscenes dataset split
-VERBOSE: True                     # enable verbose mode
+VERBOSE: True                   # enable verbose mode
 
 ## DATALOADER ##################################################################
-COORDINATES: "vehicle"    # coordinate system to return all data in
+COORDINATES: "global"    # coordinate system to return all data in
                           # "vehicle" or "global"
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera

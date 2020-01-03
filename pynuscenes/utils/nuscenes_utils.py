@@ -67,7 +67,7 @@ def map_pointcloud_to_image(pointcloud, im, cam_cs_record, cam_pose_record,
     """
     pc = copy.deepcopy(pointcloud)
     ## Transform point cloud into the camera coordinates via global
-    ## First step: transform to global frame if it's not already
+    ## First step: transform to global frame if in vehicle frame
     if coordinates == 'vehicle':
         assert pointsensor_pose_record is not None, 'Erroe: pointsensor_pose_record is required.'
         pc = vehicle_to_global(pc, pointsensor_pose_record)

@@ -59,7 +59,7 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
                                             pointsensor_pose_record=radar_pose_rec,
                                             coordinates=coordinates,
                                             dot_size=15)
-            draw_points_on_image(image, radar_pc, color, ax=ax[i], dot_size=18)
+            draw_points_on_image(image, radar_pc, color, ax=ax[i], dot_size=18, edge_color=(1,1,1))
         
         ## Plot annotations on image
         cam_cs_rec = cam['cs_record']      
@@ -169,7 +169,7 @@ def visualize_boxes_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
     
     return fig
 ##------------------------------------------------------------------------------
-def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=None):
+def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=None, edge_color='face'):
     """
     Draw points on an image. Points must be already in image coordinates.
     """
@@ -180,7 +180,7 @@ def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=
     ax.imshow(image)
 
     # colors = np.minimum(1, dists / axes_limit / np.sqrt(2))
-    ax.scatter(points[0, :], points[1, :], c=colors, s=dot_size)
+    ax.scatter(points[0, :], points[1, :], c=colors, s=dot_size, edgecolors=edge_color)
     ax.axis('off')
 
     if out_path is not None:

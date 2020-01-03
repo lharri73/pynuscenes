@@ -122,6 +122,7 @@ class NuscenesDataset(NuScenes):
             'camera':[],
             'lidar': [],
             'radar':[],
+            'coordinates': self.cfg.COORDINATES,
         }
         ## Generate a frame containing all sensors
         frame['anns'] = sample_rec['anns']
@@ -167,7 +168,7 @@ class NuscenesDataset(NuScenes):
         frame = copy.deepcopy(self.db['frames'][idx])      
         sample_rec = self.get('sample', frame['sample_token'])
         
-        ## Get camera data
+        ## Get camera data if requested
         for i, cam in enumerate(frame['camera']):
             image, cs_record, pose_rec, filename = self._get_cam_data(cam['token'])
             frame['camera'][i]['image'] = image
@@ -177,7 +178,7 @@ class NuscenesDataset(NuScenes):
             frame['camera'][i]['img_id'] = self.img_id
             self.img_id += 1
 
-        ## Get LIDAR data
+        ## Get LIDAR data if requested
         for i, lidar in enumerate(frame['lidar']):
             lidar_pc, lidar_cs, pose_rec = self._get_pointsensor_data('lidar',
                                                             sample_rec,
@@ -187,20 +188,23 @@ class NuscenesDataset(NuScenes):
             frame['lidar'][i]['cs_record'] = lidar_cs
             frame['lidar'][i]['pose_record'] = pose_rec
 
-        ## Get Radar data
-        all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
-        for i, radar in enumerate(frame['radar']):
-            radar_pc, _ , pose_rec = self._get_pointsensor_data('radar',
-                                                         sample_rec, 
-                                                         radar['token'], 
-                                                         self.cfg.RADAR_SWEEPS)
-            all_radar_pcs.points = np.hstack((all_radar_pcs.points, radar_pc.points))
-        ## TODO: since different Radar point clouds are merged, 
-        ## pose_rec for the last Radar is saved as the pose_rec.
-        frame['radar'] = [{'pointcloud':all_radar_pcs, 
-                           'pose_record': pose_rec}]
-        ## Get annotations
-        frame['anns'] = self._get_annotations(frame['lidar'][0]['token'])
+        ## Get Radar data if requested
+        if len(frame['radar']) > 0:
+            all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
+            for i, radar in enumerate(frame['radar']):
+                radar_pc, _ , pose_rec = self._get_pointsensor_data('radar',
+                                                            sample_rec, 
+                                                            radar['token'], 
+                                                            self.cfg.RADAR_SWEEPS)
+                all_radar_pcs.points = np.hstack((all_radar_pcs.points, radar_pc.points))
+            ## TODO: since different Radar point clouds are merged, 
+            ## pose_rec for the last Radar is saved as the pose_rec.
+            frame['radar'] = [{'pointcloud':all_radar_pcs, 
+                            'pose_record': pose_rec}]
+        
+        ## Get annotations using the LIDAR token
+        ligar_token = sample_rec['data']['LIDAR_TOP']
+        frame['anns'] = self._get_annotations(ligar_token)
         
         return frame
     ##--------------------------------------------------------------------------
@@ -255,9 +259,10 @@ class NuscenesDataset(NuScenes):
         else:
             raise Exception('Sensor type not valid.')
         
-        ## Take point clouds from sensor to global/vehicle coordinates
+        ## Take point clouds from sensor to vehicle coordinates
         pc = nsutils.sensor_to_vehicle(pc, cs_record)       
         if self.cfg.COORDINATES == 'global':
+            ## Take point clouds from vehicle to global coordinates
             pc = nsutils.vehicle_to_global(pc, pose_rec)
         return pc, cs_record, pose_rec
     ##--------------------------------------------------------------------------
