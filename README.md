@@ -33,3 +33,71 @@ git clone https://github.com/mrnabati/nuscenes_dataset.git
 cd nuscenes_dataset
 pip install -e .
 ```
+
+## Getting Started
+
+#### Frame Structure
+Database frame:
+```yaml
+frame = {
+    'camera': [{            # A list of camera frame dictionaries (One for each camera)
+        token: str,         # Camera sensor record token
+        filename: str,      # Image filename, relative to nuscenes root dir
+        channel: str,       # Camera channel (e.g. CAM_FRONT_RIGHT)
+        }, ...
+    ],
+    'lidar': [{             # A list of LIDAR frame dictionaries
+        token: str,         # LIDAR sensor record token
+        filename: str,      # Pointcloud filename, relative to nuscenes root dir
+        channel: str,       # LIDAR channel (always LIDAR_TOP)
+        }, ...
+    ]
+    'radar': [{             # A list of Radar frame dictionaries (one for each Radar)
+        token: str,         # Radar sensor record token
+        filename: str,      # Pointcloud filename, relative to nuscenes root dir
+        channel: str,       # Radar channel (always RADAR_BACK_LEFT)
+        }, ...
+    ],
+    'anns': [{},...]        # All annotations for this sample
+    'sample_token': str,    # Nuscenes sample token
+    'coordinates': str,      # Reference coordinate system ('vehicle', 'global')
+    'meta': dict,           # Frame meta-data
+    'id': int               # Frame ID
+}
+```
+
+Dataloader frames have the same format as database frame, with the addition of 
+sensor data:
+
+```yaml
+frame = {
+    'camera': [{
+        image: nparray,      # Image from this camera
+        sc_record: dict,     # Camera sensor calibration parameters
+        pose_record: dict,   # Vehicle pose record for the timestamp of the camera
+        img_id: int,         # Image ID
+        token: str,
+        filename: str,
+        channel: str,
+        }, ...
+    ],
+    'lidar': [{
+        pointcloud: ndarray, # LIDAR Pointcloud
+        pose_record: dict,   # Vehicle pose record for the timestamp of the lidar
+        token: str,
+        filename: str,
+        channel: str,
+        }, ...
+    ],
+    'radar': [{
+        pointcloud: ndarray, # Radar Pointcloud
+        pose_record: dict,   # Vehicle pose record for the timestamp of Radar
+        }, ...
+    ],
+    'anns': [{},...]
+    'sample_token': str,
+    'coordinates': str,
+    'meta': dict,
+    'id': int
+}
+```

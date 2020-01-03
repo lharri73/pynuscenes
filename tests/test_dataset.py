@@ -1,41 +1,48 @@
-################################################################################
-## Date Created  : Fri Jun 14 2019                                            ##
-## Authors       : Landon Harris, Ramin Nabati                                ##
-## Last Modified : August 26th, 2019                                          ##
-## Copyright (c) 2019                                                         ##
-################################################################################
-
 import context
-from pynuscenes.nuscenes_dataset import NuscenesDataset
-import os
-import logging
 from tqdm import tqdm
-from pynuscenes.utils.visualize import show_sample_data
+import numpy as np
+import matplotlib
+# matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pynuscenes.utils.nuscenes_utils as nsutils
+from pynuscenes.utils.io_utils import save_fig
+from pynuscenes.nuscenes_dataset import NuscenesDataset
+from pynuscenes.utils.visualize import visualize_sample_3d, visualize_sample_2d
+from pynuscenes.utils.visualize import draw_gt_box_on_image
 
-def test_dataset():
-    dataset_location = '../data/nuscenes'
-    
-    ## test vehicle coordinates
-    mini_dataset_vehicle = NuscenesDataset(nusc_path=dataset_location, 
-                                        nusc_version='v1.0-mini', 
-                                        split='mini_train',
-                                        coordinates='vehicle',
-                                        nsweeps_lidar=1,
-                                        nsweeps_radar=1)    
+def test_dataset():    
+    mini_dataset_vehicle = NuscenesDataset(dataroot='../data/nuscenes',
+                                           cfg='../pynuscenes/config/cfg.yml')
     for sample in tqdm(mini_dataset_vehicle):
-        show_sample_data(sample, coordinates='vehicle')
+        ## Render sample using nuscenes devkit API
+        # sample_token = sample['sample_token']
+        # mini_dataset_vehicle.render_sample(sample_token)
+        # plt.show(block=False)
+
+        sample_data_token = sample['camera'][0]['token']
+        mini_dataset_vehicle.render_sample_data(sample_data_token)
+        plt.show(block=False)
+
+        # mini_dataset_vehicle.render_pointcloud_in_image(sample['sample_token'],
+        #                                                 pointsensor_channel = 'RADAR_FRONT',
+        #                                                 camera_channel = 'CAM_FRONT',
+        #                                                 dot_size = 8)
+        # plt.show()
+        # input('here')
+
+        ## Render nuscenes_dataset sample using nuscenes_dataset API in 3D
+        # visualize_sample_3d(sample, 
+        #                     coordinates=mini_dataset_vehicle.cfg.COORDINATES)
         input('press enter to continue')
-    
-    ## test global coordinates
-    mini_dataset_global = NuscenesDataset(nusc_path=dataset_location, 
-                                        nusc_version='v1.0-mini', 
-                                        split='mini_train',
-                                        coordinates='global',
-                                        nsweeps_lidar=1,
-                                        nsweeps_radar=1)  
-    for sample in tqdm(mini_dataset_global):
-        show_sample_data(sample, coordinates='global', fig=fig)
+        
+        ## Render nuscenes_dataset sample using nuscenes_dataset API in 2D
+        print(sample)
+        figure = visualize_sample_2d(sample, 
+                                     coordinates=mini_dataset_vehicle.cfg.COORDINATES, 
+                                     out_path='output.jpg')
+        plt.show(block=False)
         input('press enter to continue')
+        plt.close(fig=figure)
 
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":

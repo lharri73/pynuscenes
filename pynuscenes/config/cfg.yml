@@ -1,0 +1,34 @@
+## NUSCENES DATASET ############################################################
+VERSION: "v1.0-mini"            # nuscenes dataset version
+SPLIT: "mini_val"               # nuscenes dataset split
+VERBOSE: True                   # enable verbose mode
+
+## DATALOADER ##################################################################
+COORDINATES: "global"    # coordinate system to return all data in
+                          # "vehicle" or "global"
+SAMPLE_MODE: "one_cam"    # sample structure
+                          # "one_cam": sample contains one image from one camera
+                          # "all_cam" sample contains images from all cameras
+LIDAR_SWEEPS: 1           # Number of LIDAR sweeps
+RADAR_SWEEPS: 1           # Number of Radar sweeps
+SENSORS: [                # list of sensor modalities to include in the dataloader
+  "CAM_FRONT_LEFT",
+  "CAM_FRONT_RIGHT",
+  "CAM_FRONT",
+  "CAM_BACK_LEFT",
+  "CAM_BACK_RIGHT",
+  "CAM_BACK",
+  "RADAR_FRONT_LEFT",
+  "RADAR_FRONT_RIGHT",
+  "RADAR_FRONT",
+  "RADAR_BACK_LEFT",
+  "RADAR_BACK_RIGHT",
+  "LIDAR_TOP",
+]
+
+## MISC ########################################################################
+IMG_ID_LEN: 8                     # length of string image ID
+PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
+CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
+FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
+LOG_OUT_DIR: "../../output/logs"  # output log filename
