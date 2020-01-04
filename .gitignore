@@ -1,6 +1,7 @@
 ### Project Specific ##
 **.pkl
 data/
+output/
 **/.DS_Store
 
 ### VSCode ###
