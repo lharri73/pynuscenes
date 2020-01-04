@@ -477,7 +477,7 @@ def sensor_to_vehicle(data, cs_record):
 #     else:
 #         raise TypeError('cannot filter object with type {}'.format(type(pc)))
 #     return pc
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def filter_points(pointcloud, cam_cs_record, img_shape=(1600,900)):
     """ # TODO: check compatibility
     Filter point cloud to only include the ones mapped inside an image
@@ -509,7 +509,7 @@ def filter_points(pointcloud, cam_cs_record, img_shape=(1600,900)):
     print(pc.shape)
     input('here')
     return pointcloud
-##--------------------------------------------------------------------------
+##------------------------------------------------------------------------------
 def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), 
                 img=np.zeros((900,1600,3))):
     """ # TODO: check compatibility
@@ -533,3 +533,19 @@ def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900),
             # cv2.waitKey(1)
             visible_boxes.append(annotations_orig[i])
     return visible_boxes
+##------------------------------------------------------------------------------
+def get_box_dist(box, pose_record):
+        """
+        Calculates the cylindrical (xy) center distance from ego vehicle to each box.
+        :param box (Box): The NuScenes annotation box in global coordinates
+        :param pose_record: Ego pose record from the LIDAR
+        :return: distance (in meters)
+        """
+
+        # Both boxes and ego pose are given in global coord system, so distance can be calculated directly.
+        # Note that the z component of the ego pose is 0.
+        ego_translation = (box.center[0] - pose_record['translation'][0],
+                           box.center[1] - pose_record['translation'][1],
+                           box.center[2] - pose_record['translation'][2])
+        ego_dist = np.sqrt(np.sum(np.array(ego_translation[:2]) ** 2))
+        return round(ego_dist,2)
