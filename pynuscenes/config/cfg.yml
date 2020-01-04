@@ -4,7 +4,7 @@ SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                   # enable verbose mode
 
 ## DATALOADER ##################################################################
-COORDINATES: "global"    # coordinate system to return all data in
+COORDINATES: "vehicle"    # coordinate system to return all data in
                           # "vehicle" or "global"
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
@@ -14,36 +14,41 @@ RADAR_SWEEPS: 1           # number of Radar sweeps
 BOX_VELOCITY: False       # calculate velocity for each annotation
 MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
                           # (0 for no limit on distance)
-SENSORS: [                # sensors to include in the dataloader
+
+## sensors to include in the dataloader. All sensors not in this list are ignored.
+SENSORS: [
   # "CAM_FRONT_LEFT",
   # "CAM_FRONT_RIGHT",
   "CAM_FRONT",
   # "CAM_BACK_LEFT",
   # "CAM_BACK_RIGHT",
   # "CAM_BACK",
-  # "RADAR_FRONT_LEFT",
-  # "RADAR_FRONT_RIGHT",
-  # "RADAR_FRONT",
-  # "RADAR_BACK_LEFT",
-  # "RADAR_BACK_RIGHT",
-  # "LIDAR_TOP",
+  "RADAR_FRONT_LEFT",
+  "RADAR_FRONT_RIGHT",
+  "RADAR_FRONT",
+  "RADAR_BACK_LEFT",
+  "RADAR_BACK_RIGHT",
+  "LIDAR_TOP",
 ]
-CLASSES: [                # Classes to include in the dataset
-  "movable_object.barrier",
-  "vehicle.bicycle",
-  "vehicle.bus.bendy",
-  "vehicle.bus.rigid",
-  "vehicle.car",
-  "vehicle.construction",
-  "vehicle.motorcycle",
-  "human.pedestrian.adult",
-  "human.pedestrian.child",
-  "human.pedestrian.construction_worker",
-  "human.pedestrian.police_officer",
-  "movable_object.trafficcone",
-  "vehicle.trailer",
-  "vehicle.truck",
-]
+
+## classes to include in dataloader and their name mapping. 
+## All annotations with classes not in this dictionary are ignored.
+CLASSES: {
+  'movable_object.barrier':               'barrier',
+  'vehicle.bicycle':                      'bicycle',
+  'vehicle.bus.bendy':                    'bus',
+  'vehicle.bus.rigid':                    'bus',
+  'vehicle.car':                          'car',
+  'vehicle.construction':                 'construction_vehicle',
+  'vehicle.motorcycle':                   'motorcycle',
+  'human.pedestrian.adult':               'pedestrian',
+  'human.pedestrian.child':               'pedestrian',
+  'human.pedestrian.construction_worker': 'pedestrian',
+  'human.pedestrian.police_officer':      'pedestrian',
+  'movable_object.trafficcone':           'traffic_cone',
+  'vehicle.trailer':                      'trailer',
+  'vehicle.truck':                        'truck',
+}
 
 ## MISC ########################################################################
 IMG_ID_LEN: 8                     # length of string image ID

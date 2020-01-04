@@ -73,20 +73,25 @@ class CocoConverter:
                 if self.cfg.COORDINATES == 'global':
                     ann = nsutils.global_to_vehicle(ann, cam_pose_rec)
                 ann = nsutils.vehicle_to_sensor(ann, cam_cs_rec)
-                
+
                 ## Get 2D bbox from the 3D annotation
                 view = np.array(cam_cs_rec['camera_intrinsic'])
                 # bbox = nsutils.box_3d_to_2d(ann, view, (img_width, img_height))
                 bbox = nsutils.box_3d_to_2d_simple(ann, view, (img_width, img_height))
                 if bbox is None:
                     continue
+                
+                ## Get distance to the box from camera
+                dist = self.get_box_dist_to_cam(ann)
 
-                coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id)
+                coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id, distance=dist)
                 this_sample_anns.append(coco_ann)
             
             ## Get the Radar pointclouds added to dataset
-            pc = sample['radar'][0]['pointcloud'].points
-            pc_coco = np.transpose(pc).tolist()
+            pc_coco = None
+            if len(sample['radar'])>0:
+                pc = sample['radar'][0]['pointcloud'].points
+                pc_coco = np.transpose(pc).tolist()
 
             ## Add sample to the COCO dataset
             img_id = cam['img_id']
@@ -100,7 +105,7 @@ class CocoConverter:
             if self.use_symlinks:
                 os.symlink(os.path.abspath(cam['cam_path']), coco_img_path)
             
-            # Uncomment to visualize every sample
+            ## Uncomment to visualize every sample
             # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
             # plt.show()
             # input('here plot')
@@ -108,6 +113,18 @@ class CocoConverter:
         self.logger.info('Saving annotations to disk')
         self.coco_dataset.saveAnnsToDisk()
         self.logger.info('Conversion complete!')
+    ## -------------------------------------------------------------------------
+    def get_box_dist_to_cam(self, box):
+            """
+            Calculates the cylindrical (xy) center distance from camera to a box.
+            :param box (Box): The NuScenes annotation box in camera coordinates
+            :return: distance (in meters)
+            """
+
+            # Distance can be calculated directly from box center
+            # Note that the y component in the camera coordinates is downward.
+            ego_dist = np.sqrt(np.sum(np.array(box.center[[0,2]]) ** 2))
+            return round(ego_dist,2)
 ## -----------------------------------------------------------------------------
 def parse_args():
     """

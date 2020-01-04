@@ -283,8 +283,9 @@ class NuscenesDataset(NuScenes):
         ## Get boxes from nuscenes (boxes are in global coordinates)
         orig_box_list = self.get_boxes(sample_data_token)
         for box in orig_box_list:
-            if box.name not in self.cfg.CLASSES:
+            if box.name not in self.cfg.CLASSES.keys():
                 continue
+            box.name = self.cfg.CLASSES[box.name]
             if self.cfg.MAX_BOX_DIST:
                 box_dist = nsutils.get_box_dist(box, pose_record)
                 if box_dist > abs(self.cfg.MAX_BOX_DIST):

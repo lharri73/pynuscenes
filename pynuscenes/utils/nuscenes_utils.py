@@ -548,4 +548,4 @@ def get_box_dist(box, pose_record):
                            box.center[1] - pose_record['translation'][1],
                            box.center[2] - pose_record['translation'][2])
         ego_dist = np.sqrt(np.sum(np.array(ego_translation[:2]) ** 2))
-        return ego_dist
+        return round(ego_dist,2)
