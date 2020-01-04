@@ -35,6 +35,7 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
     ## Plot pointclouds on image
     for i, cam in enumerate(sample['camera']):
         image = cam['image']
+        ax[i].imshow(image)
         
         ## Plot LIDAR data
         if len(sample['lidar']) > 0:
@@ -71,7 +72,7 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
 
     ## Display and save the figures
     if out_path is not None:
-        save_fig('output.jpg',fig=figure, format='jpg')
+        save_fig(out_path, fig=figure, format='jpg')
     
     return figure
 ##------------------------------------------------------------------------------

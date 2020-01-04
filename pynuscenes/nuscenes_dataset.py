@@ -277,41 +277,26 @@ class NuscenesDataset(NuScenes):
             return []
     
         box_list = []
+        sd_record = self.get('sample_data', sample_data_token)
+        pose_record = self.get('ego_pose', sd_record['ego_pose_token'])
+        
         ## Get boxes from nuscenes (boxes are in global coordinates)
         orig_box_list = self.get_boxes(sample_data_token)
         for box in orig_box_list:
-            ## Filter boxes based on their class
-            try:
-                box.name = _C.NAMEMAPPING[box.name]
-            except KeyError:
+            if box.name not in self.cfg.CLASSES:
                 continue
-            box.velocity = self.box_velocity(box.token)
+            if self.cfg.MAX_BOX_DIST:
+                box_dist = nsutils.get_box_dist(box, pose_record)
+                if box_dist > abs(self.cfg.MAX_BOX_DIST):
+                    continue
             
+            if self.cfg.BOX_VELOCITY:
+                box.velocity = self.box_velocity(box.token)
             ## Global to Vehicle
             if self.cfg.COORDINATES == 'vehicle':
-                sd_record = self.get('sample_data', sample_data_token)
-                pose_record = self.get('ego_pose', sd_record['ego_pose_token'])
                 box = nsutils.global_to_vehicle(box, pose_record)
-            
             box_list.append(box)
         return box_list
-    ##--------------------------------------------------------------------------
-    def get_box_dist(box, pose_record):
-        """
-        Calculates the cylindrical (xy) center distance from ego vehicle to each box.
-        :param box (Box): The NuScenes annotation box in global coordinates
-        :param pose_record: Ego pose record from the LIDAR
-        :return: distance (in meters)
-        """
-
-        # Both boxes and ego pose are given in global coord system, so distance can be calculated directly.
-        # Note that the z component of the ego pose is 0.
-        ego_translation = (box.translation[0] - pose_record['translation'][0],
-                           box.translation[1] - pose_record['translation'][1],
-                           box.translation[2] - pose_record['translation'][2])
-        ego_dist = np.sqrt(np.sum(np.array(ego_translation[:2]) ** 2))
-
-        return ego_dist
     ##--------------------------------------------------------------------------
     def _get_sweep_tokens(self, sd_record):
         """

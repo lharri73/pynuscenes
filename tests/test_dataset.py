@@ -36,10 +36,9 @@ def test_dataset():
         input('press enter to continue')
         
         ## Render nuscenes_dataset sample using nuscenes_dataset API in 2D
-        print(sample)
         figure = visualize_sample_2d(sample, 
                                      coordinates=mini_dataset_vehicle.cfg.COORDINATES, 
-                                     out_path='output.jpg')
+                                     out_path='../output/figure.jpg')
         plt.show(block=False)
         input('press enter to continue')
         plt.close(fig=figure)
