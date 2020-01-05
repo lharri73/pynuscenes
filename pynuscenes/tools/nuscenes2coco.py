@@ -16,6 +16,19 @@ This script converts NuScenes data to COCO format.
 """
 
 class CocoConverter:
+
+    ## Mapping from NuScenes categoies to COCO categoies
+    NUSC_COCO_CAT_MAP = {
+        'pedestrian':           {'id': 1, 'name': 'pedestrian', 'supercategory': 'person'},
+        'car':                  {'id': 2, 'name': 'car', 'supercategory': 'vehicle'},
+        'truck':                {'id': 3, 'name': 'truck', 'supercategory': 'vehicle'},
+        'motorcycle':           {'id': 4, 'name': 'motorcycle', 'supercategory': 'vehicle'},
+        'bicycle':              {'id': 5, 'name': 'bicycle', 'supercategory': 'vehicle'},
+        'bus':                  {'id': 6, 'name': 'bus', 'supercategory': 'vehicle'},
+        'trailer':              {'id': 7, 'name': 'trailer', 'supercategory': 'vehicle'},
+        'construction_vehicle': {'id': 8, 'name': 'construction_vehicle', 'supercategory': 'vehicle'},
+    }
+
     def __init__(self,
                  nusc_root: str = '../../data/nuscenes',
                  nusc_cfg: str = '../config/cfg.yml',
@@ -36,12 +49,7 @@ class CocoConverter:
         self.coco_dataset.create_new_dataset(dataset_dir=output_dir,
                                              split=self.cfg.SPLIT)
         ## Set COCO categories
-        self.CATEGORIES = [{'supercategory': 'person', 'id': 1, 'name': 'person'}, 
-                      {'supercategory': 'vehicle', 'id': 2, 'name': 'bicycle'}, 
-                      {'supercategory': 'vehicle', 'id': 3, 'name': 'car'},
-                      {'supercategory': 'vehicle', 'id': 4, 'name': 'motorcycle'},  
-                      {'supercategory': 'vehicle', 'id': 6, 'name': 'bus'},
-                      {'supercategory': 'vehicle', 'id': 8, 'name': 'truck'}]
+        self.CATEGORIES = [vals for _, vals in self.NUSC_COCO_CAT_MAP.items()]
         self.coco_dataset.setCategories(self.CATEGORIES)
     ##--------------------------------------------------------------------------
     def convert(self):
@@ -65,7 +73,7 @@ class CocoConverter:
 
             for ann in anns:
                 ## Get equivalent coco category name
-                coco_cat, coco_cat_id, coco_supercat = nsutils.nuscene_cat_to_coco(ann.name)
+                coco_cat, coco_cat_id, coco_supercat = self.nuscene_cat_to_coco(ann.name)
                 if coco_cat is None:
                     continue
                 
@@ -119,6 +127,21 @@ class CocoConverter:
         self.logger.info('Saving annotations to disk')
         self.coco_dataset.saveAnnsToDisk()
         self.logger.info('Conversion complete!')
+    ##------------------------------------------------------------------------------
+    def nuscene_cat_to_coco(self, nusc_ann_name):
+        """
+        Convert nuscene categories to COCO cat, cat_id and supercategory
+
+        :param nusc_ann_name (str): Nuscenes annotation name
+        """
+        try:
+            coco_equivalent = self.NUSC_COCO_CAT_MAP[nusc_ann_name]
+        except KeyError:
+            return None, None, None
+        coco_cat = coco_equivalent['name']
+        coco_id = coco_equivalent['id']
+        coco_supercat = coco_equivalent['supercategory']
+        return coco_cat, coco_id, coco_supercat
     ## -------------------------------------------------------------------------
     def get_box_dist_to_cam(self, box):
             """

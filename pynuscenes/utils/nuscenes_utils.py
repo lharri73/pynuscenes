@@ -183,21 +183,6 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
 #         bboxes.append(bbox)
 #     return bboxes
 ##------------------------------------------------------------------------------
-def nuscene_cat_to_coco(nusc_ann_name):
-    """
-    Convert nuscene categories to COCO cat, cat_id and supercategory
-
-    :param nusc_ann_name (str): Nuscenes annotation name
-    """
-    try:
-        coco_equivalent = NS_C.COCO_CLASSES[nusc_ann_name]
-    except KeyError:
-        return None, None, None
-    coco_cat = coco_equivalent['name']
-    coco_id = coco_equivalent['id']
-    coco_supercat = coco_equivalent['supercategory']
-    return coco_cat, coco_id, coco_supercat
-##------------------------------------------------------------------------------
 def box_3d_to_2d_simple(box, p_left, imsize, mode='xywh'):
         """
         Projects 3D box into image FOV.
