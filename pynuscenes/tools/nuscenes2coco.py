@@ -103,11 +103,17 @@ class CocoConverter:
                                         img_format='RGB',
                                         write_img= not self.use_symlinks)            
             if self.use_symlinks:
-                os.symlink(os.path.abspath(cam['cam_path']), coco_img_path)
+                try:
+                    os.symlink(os.path.abspath(cam['filename']), coco_img_path)
+                except FileExistsError as e:
+                    self.logger.warning("Symlink '{}' already exists, not overwriting.".format(coco_img_path))
+                except:
+                    raise e
+
             
             ## Uncomment to visualize every sample
             # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
-            # plt.show()
+            # plt.show(block=False)
             # input('here plot')
 
         self.logger.info('Saving annotations to disk')
