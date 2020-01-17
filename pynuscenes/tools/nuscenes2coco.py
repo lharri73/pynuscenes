@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from cocoplus.coco import COCO_PLUS
 from cocoplus.utils.coco_utils import COCO_CATEGORIES
 import pynuscenes.utils.nuscenes_utils as nsutils
-# from pynuscenes.utils.nuscenes_utils import nuscenes_box_to_coco, nuscene_cat_to_coco
 from pynuscenes.nuscenes_dataset import NuscenesDataset
 from pynuscenes.utils.visualize import draw_gt_box_on_image
 from nuscenes.nuscenes import NuScenes
@@ -84,7 +83,6 @@ class CocoConverter:
 
                 ## Get 2D bbox from the 3D annotation
                 view = np.array(cam_cs_rec['camera_intrinsic'])
-                # bbox = nsutils.box_3d_to_2d(ann, view, (img_width, img_height))
                 bbox = nsutils.box_3d_to_2d_simple(ann, view, (img_width, img_height))
                 if bbox is None:
                     continue
@@ -97,8 +95,8 @@ class CocoConverter:
             
             ## Get the Radar pointclouds added to dataset
             pc_coco = None
-            if len(sample['radar'])>0:
-                pc = sample['radar'][0]['pointcloud'].points
+            if 'radar' in sample:
+                pc = sample['radar']['pointcloud'].points
                 pc_coco = np.transpose(pc).tolist()
 
             ## Add sample to the COCO dataset
@@ -122,6 +120,7 @@ class CocoConverter:
             ## Uncomment to visualize every sample
             # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
             # plt.show(block=False)
+            # plt.savefig('fig.jpg')
             # input('here plot')
 
         self.logger.info('Saving annotations to disk')
