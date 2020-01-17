@@ -28,7 +28,7 @@ SENSORS: [
   "RADAR_FRONT",
   "RADAR_BACK_LEFT",
   "RADAR_BACK_RIGHT",
-  "LIDAR_TOP",
+  # "LIDAR_TOP",
 ]
 
 ## classes to include in dataloader and their name mapping. 

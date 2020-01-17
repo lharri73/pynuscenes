@@ -41,10 +41,10 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
         if len(sample['lidar']) > 0:
             lidar_pc = sample['lidar'][0]['pointcloud']
             lidar_pose_rec = sample['lidar'][0]['pose_record']
-            lidar_pc, color = nsutils.map_pointcloud_to_image(lidar_pc,
-                                            image, 
+            lidar_pc, color, _ = nsutils.map_pointcloud_to_image(lidar_pc,
                                             cam['cs_record'],
                                             cam_pose_record=cam['pose_record'],
+                                            img_shape=(1600,900),
                                             pointsensor_pose_record=lidar_pose_rec,
                                             coordinates=coordinates)
             draw_points_on_image(image, lidar_pc, color, ax=ax[i], dot_size=2)
@@ -53,10 +53,10 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
         if len(sample['radar']) > 0:
             radar_pc = sample['radar'][0]['pointcloud']
             radar_pose_rec = sample['radar'][0]['pose_record']
-            radar_pc, color = nsutils.map_pointcloud_to_image(radar_pc,
-                                            image, 
+            radar_pc, color, _ = nsutils.map_pointcloud_to_image(radar_pc,
                                             cam['cs_record'],
                                             cam_pose_record=cam['pose_record'],
+                                            img_shape=(1600,900),
                                             pointsensor_pose_record=radar_pose_rec,
                                             coordinates=coordinates,
                                             dot_size=15)
