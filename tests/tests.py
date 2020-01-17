@@ -10,35 +10,40 @@ from pynuscenes.nuscenes_dataset import NuscenesDataset
 from pynuscenes.utils.visualize import visualize_sample_3d, visualize_sample_2d
 from pynuscenes.utils.visualize import draw_gt_box_on_image
 
-def test_dataset(nusc):    
+def test_visualization(nusc):    
 
     for sample in tqdm(nusc):
-        ## Render sample using nuscenes devkit API
-        # sample_token = sample['sample_token']
-        # nusc.render_sample(sample_token)
+        ## Render the whole sample using nuscenes devkit API
+        sample_token = sample['sample_token']
+        nusc.render_sample(sample_token)
         # plt.show(block=False)
+        plt.savefig('0_sample.jpg')
 
+        ## Render point cloud on image using nuscenes devkit API
+        nusc.render_pointcloud_in_image(sample['sample_token'],
+                                        pointsensor_channel = 'RADAR_FRONT',
+                                        camera_channel = 'CAM_FRONT_LEFT',
+                                        dot_size = 8)
+        # plt.show(block=False)
+        plt.savefig('0_camera_radar.jpg')
+
+
+        ## Render one sensor using nuscenes devkit API
         sample_data_token = sample['camera'][0]['token']
         nusc.render_sample_data(sample_data_token)
-        plt.show(block=False)
+        # plt.show(block=False)
+        plt.savefig('0_camera.jpg')
 
-        # nusc.render_pointcloud_in_image(sample['sample_token'],
-        #                                                 pointsensor_channel = 'RADAR_FRONT',
-        #                                                 camera_channel = 'CAM_FRONT',
-        #                                                 dot_size = 8)
-        # plt.show()
-        # input('here')
-
-        ## Render nuscenes_dataset sample using nuscenes_dataset API in 3D
+        ## Render sample using nuscenes_dataset API in 3D
         # visualize_sample_3d(sample, 
         #                     coordinates=nusc.cfg.COORDINATES)
-        input('press enter to continue')
+        # input('press enter to continue')
         
-        ## Render nuscenes_dataset sample using nuscenes_dataset API in 2D
+        ## Render sample using nuscenes_dataset API in 2D
         figure = visualize_sample_2d(sample, 
                                      coordinates=nusc.cfg.COORDINATES, 
-                                     out_path='../output/figure.jpg')
-        plt.show(block=False)
+                                     out_path='1_camera_radar.jpg')
+        # plt.show(block=False)
         input('press enter to continue')
         plt.close(fig=figure)
 ##------------------------------------------------------------------------------
@@ -62,5 +67,6 @@ def test_points_in_image(nusc):
 if __name__ == "__main__":
     nusc = NuscenesDataset(dataroot='../data/nuscenes',
                            cfg='../pynuscenes/config/cfg.yml')
-    # test_dataset(nusc)
-    test_points_in_image(nusc)
+    
+    test_visualization(nusc)
+    # test_points_in_image(nusc)

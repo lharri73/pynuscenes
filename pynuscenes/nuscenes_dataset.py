@@ -121,8 +121,6 @@ class NuscenesDataset(NuScenes):
         frames = []
         frame = {
             'camera':[],
-            'lidar': {},
-            'radar':[],
             'coordinates': self.cfg.COORDINATES,
         }
         ## Generate a frame containing all sensors
@@ -139,9 +137,16 @@ class NuscenesDataset(NuScenes):
             sample['filename']=sd_record['filename']
             
             if 'CAM' in channel:
-                frame['camera'].append(sample)
+                ## TODO: could use defaultdict here
+                if 'camera' in frame:
+                    frame['camera'].append(sample)
+                else:
+                    frame['camera'] = [sample]
             elif 'RADAR' in channel:
-                frame['radar'].append(sample)
+                if 'radar' in frame:
+                    frame['radar'].append(sample)
+                else:
+                    frame['radar'] = [sample]
             elif 'LIDAR' in channel:
                 frame['lidar'] = sample
             else:
@@ -173,17 +178,18 @@ class NuscenesDataset(NuScenes):
         sample_record = self.get('sample', frame['sample_token'])
         
         ## Get camera data if requested
-        for i, cam in enumerate(frame['camera']):
-            image, cs_record, pose_record, filename = self._get_cam_data(cam['token'])
-            frame['camera'][i]['image'] = image
-            frame['camera'][i]['cs_record'] = cs_record
-            frame['camera'][i]['pose_record'] = pose_record
-            frame['camera'][i]['filename'] = filename
-            frame['camera'][i]['img_id'] = self.img_id
-            self.img_id += 1
+        if 'camera' in frame:
+            for i, cam in enumerate(frame['camera']):
+                image, cs_record, pose_record, filename = self._get_cam_data(cam['token'])
+                frame['camera'][i]['image'] = image
+                frame['camera'][i]['cs_record'] = cs_record
+                frame['camera'][i]['pose_record'] = pose_record
+                frame['camera'][i]['filename'] = filename
+                frame['camera'][i]['img_id'] = self.img_id
+                self.img_id += 1
 
         ## Get LIDAR data if requested
-        if len(frame['lidar'])>0:
+        if 'lidar' in frame:
             lidar_pc, lidar_cs, lidar_pose_record = self._get_pointsensor_data('lidar',
                                                             sample_record,
                                                             frame['lidar']['token'],
@@ -202,7 +208,7 @@ class NuscenesDataset(NuScenes):
             frame['lidar']['pose_record'] = lidar_pose_record
 
         ## Get Radar data if requested
-        if len(frame['radar'])>0:
+        if 'radar' in frame:
             all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
             for i, radar in enumerate(frame['radar']):
                 radar_pc, _ , radar_pose_record = self._get_pointsensor_data('radar',
