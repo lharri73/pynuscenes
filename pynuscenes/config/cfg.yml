@@ -9,6 +9,9 @@ COORDINATES: "vehicle"    # coordinate system to return all data in
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
+FILTER_PC: True           # in the "one_cam" mode, include only points inside the image
+FILTER_ANNS: True         # in the "one_cam" mode, include only annotations inside the image
+
 LIDAR_SWEEPS: 1           # number of LIDAR sweeps
 RADAR_SWEEPS: 1           # number of Radar sweeps
 BOX_VELOCITY: False       # calculate velocity for each annotation
@@ -17,18 +20,18 @@ MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations
 
 ## sensors to include in the dataloader. All sensors not in this list are ignored.
 SENSORS: [
-  # "CAM_FRONT_LEFT",
-  # "CAM_FRONT_RIGHT",
+  "CAM_FRONT_LEFT",
+  "CAM_FRONT_RIGHT",
   "CAM_FRONT",
-  # "CAM_BACK_LEFT",
-  # "CAM_BACK_RIGHT",
-  # "CAM_BACK",
+  "CAM_BACK_LEFT",
+  "CAM_BACK_RIGHT",
+  "CAM_BACK",
   "RADAR_FRONT_LEFT",
   "RADAR_FRONT_RIGHT",
   "RADAR_FRONT",
   "RADAR_BACK_LEFT",
   "RADAR_BACK_RIGHT",
-  # "LIDAR_TOP",
+  "LIDAR_TOP",
 ]
 
 ## classes to include in dataloader and their name mapping. 
