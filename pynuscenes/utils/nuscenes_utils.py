@@ -3,7 +3,7 @@ import math
 import copy
 from pyquaternion import Quaternion
 from shapely.geometry import LineString
-from nuscenes.utils.geometry_utils import view_points
+from nuscenes.utils.geometry_utils import view_points, box_in_image
 from nuscenes.utils import splits
 from pynuscenes.utils import constants as NS_C
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
@@ -202,6 +202,26 @@ def points_in_image(pointcloud, cam_cs_record, img_shape=(1600,900)):
     
     return mask
 ##------------------------------------------------------------------------------
+def boxes_in_image(boxes, cam_cs_record, img_shape=(1600,900)):
+    """
+    Check if list of annotations are inside an image
+
+    :param boxes: annotation boxes in camera coordinates
+    :param cam_cs_record: calibrated sensor record of the camera
+    :param img_shape: shape of the image (width, height)
+    """
+    assert isinstance(boxes[0], Box)
+    camera_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
+    visible_boxes = []
+    mask = []
+    for box in boxes:
+        if box_in_image(box, camera_intrinsic, img_shape):
+            visible_boxes.append(box)
+            mask.append(True)
+        else:
+            mask.append(False)
+    return visible_boxes, mask
+##------------------------------------------------------------------------------
 def split_scenes(scenes, split):
     """
     Get the list of scenes in a split
@@ -326,30 +346,6 @@ def sensor_to_vehicle(data, cs_record):
     obj.translate(translation_matrix)
 
     return obj
-##------------------------------------------------------------------------------
-def filter_anns(annotations_orig, cam_cs_record, img_shape=(1600,900), 
-                img=np.zeros((900,1600,3))):
-    """ # TODO: check compatibility
-    Filter annotations to only include the ones mapped inside an image
-
-    :param annotations_orig: annotation boxes
-    :param cam_cs_record: calibrated sensor record of the camera to filter to
-    :param img_shape: shape of the image (width, height)
-    """
-    if len(annotations_orig) == 0:
-        return []
-    assert isinstance(annotations_orig[0], Box)
-
-    annotations = pc_to_sensor(annotations_orig, cam_cs_record)
-    visible_boxes = []
-    for i, box in enumerate(annotations):
-        if box_in_image(box, np.array(cam_cs_record['camera_intrinsic']), 
-                        img_shape):
-            # box.render_cv2(img, view=np.array(cam_cs_record['camera_intrinsic']), normalize=True)
-            # cv2.imshow('image', img)
-            # cv2.waitKey(1)
-            visible_boxes.append(annotations_orig[i])
-    return visible_boxes
 ##------------------------------------------------------------------------------
 def get_box_dist(box, pose_record):
         """
