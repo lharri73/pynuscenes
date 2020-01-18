@@ -46,19 +46,18 @@ frame = {
         channel: str,       # Camera channel (e.g. CAM_FRONT_RIGHT)
         }, ...
     ],
-    'lidar': [{             # A list of LIDAR frame dictionaries
+    'lidar': {              # A LIDAR frame dictionaries
         token: str,         # LIDAR sensor record token
         filename: str,      # Pointcloud filename, relative to nuscenes root dir
         channel: str,       # LIDAR channel (always LIDAR_TOP)
-        }, ...
-    ]
+        }
     'radar': [{             # A list of Radar frame dictionaries (one for each Radar)
         token: str,         # Radar sensor record token
         filename: str,      # Pointcloud filename, relative to nuscenes root dir
         channel: str,       # Radar channel (always RADAR_BACK_LEFT)
         }, ...
     ],
-    'anns': [{},...]        # All annotations for this sample
+    'anns': [{},...]        # All annotations records for this sample
     'sample_token': str,    # Nuscenes sample token
     'coordinates': str,      # Reference coordinate system ('vehicle', 'global')
     'meta': dict,           # Frame meta-data
@@ -81,20 +80,19 @@ frame = {
         channel: str,
         }, ...
     ],
-    'lidar': [{
+    'lidar': {
         pointcloud: ndarray, # LIDAR Pointcloud
         pose_record: dict,   # Vehicle pose record for the timestamp of the lidar
         token: str,
         filename: str,
         channel: str,
-        }, ...
-    ],
-    'radar': [{
+        },
+    'radar': {
         pointcloud: ndarray, # Radar Pointcloud
         pose_record: dict,   # Vehicle pose record for the timestamp of Radar
-        }, ...
-    ],
-    'anns': [{},...]
+        },
+    'anns': [{},...]        # Filtered annotations as Box objects
+    'ref_pose_record': {},  # Reference pose record used for mapping anns from global to vehicle
     'sample_token': str,
     'coordinates': str,
     'meta': dict,

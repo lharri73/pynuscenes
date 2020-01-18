@@ -10,7 +10,7 @@ from pynuscenes.nuscenes_dataset import NuscenesDataset
 from pynuscenes.utils.visualize import visualize_sample_3d, visualize_sample_2d
 from pynuscenes.utils.visualize import draw_gt_box_on_image
 
-def test_visualization(nusc):    
+def test_visualization(nusc):
 
     for sample in tqdm(nusc):
         ## Render the whole sample using nuscenes devkit API
@@ -64,9 +64,46 @@ def test_points_in_image(nusc):
         print(mask1)
         input('here')
 ##------------------------------------------------------------------------------
+def test_database(nusc):
+    frames = nusc.db['frames']
+    meta = nusc.db['metadata']
+    print('Number of frames:', len(frames))
+    print('Metadata:')
+    for key,val in meta.items():
+        print('    ', key,': ',val)
+
+    for i, frame in enumerate(frames):
+        print('frame {}:'.format(i) )
+        for key, val in frame.items():
+            value = len(val) if isinstance(val, list) else val
+            print('    ', key, ': {}'.format(value))
+        # print(frame)
+        input('here')
+##------------------------------------------------------------------------------
+def test_dataset_mapper(nusc):
+
+    for i, sample in enumerate(nusc):
+        print(len(sample['anns']))
+        
+        # figure = visualize_sample_2d(sample, 
+        #                              coordinates=nusc.cfg.COORDINATES, 
+        #                              out_path='1_camera_radar.jpg')
+        
+        # ## Render point cloud on image using nuscenes devkit API
+        # nusc.render_pointcloud_in_image(sample['sample_token'],
+        #                                 pointsensor_channel = 'LIDAR_TOP',
+        #                                 camera_channel = sample['camera'][0]['channel'],
+        #                                 dot_size = 1)
+        # # plt.show(block=False)
+        # plt.savefig('0_camera_lidar.jpg')
+
+        input('here')
+##------------------------------------------------------------------------------
 if __name__ == "__main__":
     nusc = NuscenesDataset(dataroot='../data/nuscenes',
                            cfg='../pynuscenes/config/cfg.yml')
     
     test_visualization(nusc)
     # test_points_in_image(nusc)
+    # test_database(nusc)
+    # test_dataset_mapper(nusc)

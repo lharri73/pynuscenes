@@ -3,22 +3,12 @@ VERSION: "v1.0-mini"            # nuscenes dataset version
 SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                   # enable verbose mode
 
-## DATALOADER ##################################################################
-COORDINATES: "vehicle"    # coordinate system to return all data in
-                          # "vehicle" or "global"
+## DATABASE ####################################################################
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
-FILTER_PC: True           # in the "one_cam" mode, include only points inside the image
-FILTER_ANNS: True         # in the "one_cam" mode, include only annotations inside the image
 
-LIDAR_SWEEPS: 1           # number of LIDAR sweeps
-RADAR_SWEEPS: 1           # number of Radar sweeps
-BOX_VELOCITY: False       # calculate velocity for each annotation
-MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
-                          # (0 for no limit on distance)
-
-## sensors to include in the dataloader. All sensors not in this list are ignored.
+## sensors to include in the databse. All sensors not in this list are ignored.
 SENSORS: [
   "CAM_FRONT_LEFT",
   "CAM_FRONT_RIGHT",
@@ -34,10 +24,10 @@ SENSORS: [
   "LIDAR_TOP",
 ]
 
-## classes to include in dataloader and their name mapping. 
-## All annotations with classes not in this dictionary are ignored.
-CLASSES: {
-  'movable_object.barrier':               'barrier',
+## categories to include in database and their name mapping. 
+## All categories not in this dictionary are ignored.
+CATEGORIES: {
+  # 'movable_object.barrier':               'barrier',
   'vehicle.bicycle':                      'bicycle',
   'vehicle.bus.bendy':                    'bus',
   'vehicle.bus.rigid':                    'bus',
@@ -48,10 +38,23 @@ CLASSES: {
   'human.pedestrian.child':               'pedestrian',
   'human.pedestrian.construction_worker': 'pedestrian',
   'human.pedestrian.police_officer':      'pedestrian',
-  'movable_object.trafficcone':           'traffic_cone',
+  # 'movable_object.trafficcone':           'traffic_cone',
   'vehicle.trailer':                      'trailer',
   'vehicle.truck':                        'truck',
 }
+## DATALOADER ##################################################################
+COORDINATES: "vehicle"       # coordinate system to return all data in
+                            # "vehicle" or "global"
+ANN_REF_FRAME: "LIDAR_TOP"  # Annotation reference frame for vehicle pose
+
+FILTER_PC: True           # include only points inside the image ("one_cam" mode only)
+FILTER_ANNS: True         # include only annotations inside the image ("one_cam" mode only)
+
+LIDAR_SWEEPS: 1           # number of LIDAR sweeps
+RADAR_SWEEPS: 1           # number of Radar sweeps
+BOX_VELOCITY: False       # calculate velocity for each annotation
+MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
+                          # (0 for no limit on distance)
 
 ## MISC ########################################################################
 IMG_ID_LEN: 8                     # length of string image ID

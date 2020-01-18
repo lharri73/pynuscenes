@@ -62,11 +62,16 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
             draw_points_on_image(image, radar_pc, color, ax=ax[i], dot_size=18, edge_color=(1,1,1))
         
         ## Plot annotations on image
-        cam_cs_rec = cam['cs_record']      
+        cam_cs_rec = cam['cs_record']
         for box in sample['anns']:
-            if coordinates=='global':
-                box = nsutils.global_to_vehicle(box, cam['pose_record'])
-            box = nsutils.vehicle_to_sensor(box, cam_cs_rec)
+            box = nsutils.map_annotation_to_image(box, 
+                                cam_cs_record = cam['cs_record'],
+                                cam_pose_record = cam['pose_record'],
+                                ref_pose_record = sample['ref_pose_record'],
+                                coordinates = coordinates)
+            # if coordinates=='global':
+            #     box = nsutils.global_to_vehicle(box, cam['pose_record'])
+            # box = nsutils.vehicle_to_sensor(box, cam_cs_rec)
             draw_gt_box_on_image(box, image, cam_cs_rec, ax[i])
 
     ## Display and save the figures

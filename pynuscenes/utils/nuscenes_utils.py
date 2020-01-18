@@ -62,6 +62,23 @@ def map_pointcloud_to_image(pointcloud, cam_cs_record, cam_pose_record, img_shap
 
     return points, depths, mask
 ##------------------------------------------------------------------------------
+def map_annotation_to_image(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
+                            ref_pose_record=None, coordinates='vehicle'):
+    ann = copy.deepcopy(annotation)
+    ## Transform ann into the camera coordinates via global
+    ## First step: transform to global frame if in vehicle frame
+    if coordinates == 'vehicle':
+        assert ref_pose_record is not None, 'Erroe: ref_pose_record is required.'
+        ann = vehicle_to_global(ann, ref_pose_record)
+    
+    ## Second step: transform to ego vehicle frame for the timestamp of the image
+    ann = global_to_vehicle(ann, cam_pose_record)
+    
+    ## Third step: transform into the camera.
+    ann = vehicle_to_sensor(ann, cam_cs_record)
+
+    return ann
+##------------------------------------------------------------------------------
 def box_3d_to_2d_simple(box, p_left, imsize, mode='xywh'):
         """
         Projects 3D box into image FOV.

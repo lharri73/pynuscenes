@@ -69,7 +69,7 @@ class CocoConverter:
 
             ## Create annotation in coco_dataset format
             this_sample_anns = []  
-
+            print(len(anns))
             for ann in anns:
                 ## Get equivalent coco category name
                 coco_cat, coco_cat_id, coco_supercat = self.nuscene_cat_to_coco(ann.name)
@@ -93,6 +93,7 @@ class CocoConverter:
                 coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id, distance=dist)
                 this_sample_anns.append(coco_ann)
             
+            print(len(this_sample_anns))
             ## Get the Radar pointclouds added to dataset
             pc_coco = None
             if 'radar' in sample:
@@ -118,10 +119,10 @@ class CocoConverter:
 
             
             ## Uncomment to visualize every sample
-            # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
-            # plt.show(block=False)
-            # plt.savefig('fig.jpg')
-            # input('here plot')
+            ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
+            plt.show(block=False)
+            plt.savefig('fig.jpg')
+            input('here plot')
 
         self.logger.info('Saving annotations to disk')
         self.coco_dataset.saveAnnsToDisk()
