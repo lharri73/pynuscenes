@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import pynuscenes.utils.nuscenes_utils as nsutils
 from pynuscenes.utils.io_utils import save_fig
 from pynuscenes.nuscenes_dataset import NuscenesDataset
-from pynuscenes.utils.visualize import visualize_sample_3d, visualize_sample_2d
+from pynuscenes.utils.visualize import render_sample_in_3d, visualize_sample_2d
 from pynuscenes.utils.visualize import draw_gt_box_on_image
+import pynuscenes.utils.visualize as nsvis
 
 def test_visualization(nusc):
 
@@ -35,7 +36,7 @@ def test_visualization(nusc):
         plt.savefig('0_camera.jpg')
 
         ## Render sample using nuscenes_dataset API in 3D
-        # visualize_sample_3d(sample, 
+        # render_sample_in_3d(sample, 
         #                     coordinates=nusc.cfg.COORDINATES)
         # input('press enter to continue')
         
@@ -46,6 +47,32 @@ def test_visualization(nusc):
         # plt.show(block=False)
         input('press enter to continue')
         plt.close(fig=figure)
+##------------------------------------------------------------------------------
+def test_new_viz(nusc):
+    fig, ax = plt.subplots(1, 1, figsize=(16, 9))
+    
+    for i, sample in enumerate(nusc):
+        print('sample {}'.format(i))
+        lidar_pc = sample['lidar']['pointcloud']
+        radar_pc = sample['radar']['pointcloud']
+        image = sample['camera'][0]['image']
+        cam_cs_record = sample['camera'][0]['cs_record']
+        cam_pose_record = sample['camera'][0]['pose_record']
+        lidar_pose_rec = sample['lidar']['pose_record']
+        radar_pose_rec = sample['radar']['pose_record']
+        cam_intrinsics = np.array(cam_cs_record['camera_intrinsic'])
+
+        lidar_pc, depth = nsutils.map_pointcloud_to_camera(lidar_pc,
+                                        cam_cs_record,
+                                        cam_pose_record=cam_pose_record,
+                                        pointsensor_pose_record=lidar_pose_rec)
+        
+        ax = nsvis.render_pc_in_image(lidar_pc, image, cam_intrinsics, ax=ax, point_size=3)
+        # ax2 = nsvis.render_pc_in_bev(radar_pc, point_size=5)
+        fig.savefig('0_sample_img.jpg')
+        plt.cla()
+        input('here')
+
 ##------------------------------------------------------------------------------
 def test_points_in_image(nusc):
     from pynuscenes.utils.nuscenes_utils import (points_in_image, 
@@ -103,7 +130,8 @@ if __name__ == "__main__":
     nusc = NuscenesDataset(dataroot='../data/nuscenes',
                            cfg='../pynuscenes/config/cfg.yml')
     
-    test_visualization(nusc)
+    # test_visualization(nusc)
     # test_points_in_image(nusc)
     # test_database(nusc)
     # test_dataset_mapper(nusc)
+    test_new_viz(nusc)

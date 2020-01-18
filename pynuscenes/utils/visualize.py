@@ -80,7 +80,7 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
     
     return figure
 ##------------------------------------------------------------------------------
-def visualize_sample_3d(sample, coordinates, fig=None):
+def render_sample_in_3d(sample, coordinates, fig=None):
     """
     Visualize sample data from all sensors in 3D using mayavi
     
@@ -97,28 +97,79 @@ def visualize_sample_3d(sample, coordinates, fig=None):
     mlab.clf(figure=fig)
     
     ## Draw LIDAR
-    visualize_pointcloud_3d(sample['lidar'][0]['pointcloud'].points.T, 
+    render_pc_in_3d(sample['lidar'][0]['pointcloud'].points.T, 
                        fig=fig, 
                        pts_size=3,
                        scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
     ## Draw Radar
-    visualize_pointcloud_3d(sample['radar'][0]['pointcloud'].points.T, 
+    render_pc_in_3d(sample['radar'][0]['pointcloud'].points.T, 
                        fig=fig, 
                        pts_color=(1,0,0), 
                        pts_mode='sphere', 
                        pts_size=.5)
 
     ## Draw 3D annotation boxes
-    visualize_boxes_3d(sample['anns'], fig)
+    render_3dbox_in_3d(sample['anns'], fig)
 
     mlab.show(1)
     return fig
+
 ##------------------------------------------------------------------------------
-def visualize_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
+def render_pc_in_image(pc, image, camera_intrinsic, ax=None, point_size=1, edge_color='face'):
+    """
+    Render point clouds in image. Point cloud must be in the camera coordinate 
+    system.
+
+    :param pc (PointCloud): point cloud
+    :param camera_intrinsic (np.array: 3, 3): camera intrinsics matrix
+    :param ax (plt ax): Axes on which to render the points
+    :param point_size (int): point size
+    :edge_color (str): edge color for points
+    """
+
+    h, w, _= image.shape
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(16, 9))
+    ax.margins(x=0,y=0)
+    ax.imshow(image)
+
+    ## Map points from camera coordinates to the image plane
+    points, depths, mask = nsutils.map_pointcloud_to_image(pc, 
+                                                           camera_intrinsic, 
+                                                           img_shape=(w, h))
+    ax.scatter(points[0, :], points[1, :], c=depths, s=point_size, edgecolors=edge_color)
+    ax.axis('off')
+    
+    return ax
+##------------------------------------------------------------------------------
+def render_pc_in_bev(pc, ax=None, point_size=1, x_lim=(-20, 20), y_lim=(-20, 20)):
+    """
+    Render point clouds in Birds Eye View (BEV).
+    pc can be in vehicle or point sensor coordinate system.
+
+    :param pc (np.float32: m, n): point cloud as a numpy array
+    :param ax (plt ax): Axes on which to render the points
+    :param view (np.float32: n, n): Defines an arbitrary projection (n <= 4).
+    :param point_size (int): point size
+    :param x_lim (int, int): x (min, max) range for plotting
+    :param y_lim (int, int): y (min, max) range for plotting
+    """
+    pc = pc.points
+    view = np.eye(4)    # bev view
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(9, 9))
+
+    points = view_points(pc[:3, :], view, normalize=False)
+    ax.scatter(points[0, :], points[1, :], c=pc[2, :], s=point_size)
+    ax.set_xlim(x_lim[0], x_lim[1])
+    ax.set_ylim(y_lim[0], y_lim[1])
+    return ax
+##------------------------------------------------------------------------------
+def render_pc_in_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
     Draw lidar points
-    :parma pc (nparray): numpy array (n,3) of XYZ
+    :param pc (nparray): numpy array (n,3) of XYZ
     :param scalar (list): 
     :param color (nparray): numpy array (n) of intensity or whatever
     :param fig: mayavi figure handler, if None create new one otherwise will use it
@@ -147,7 +198,7 @@ def visualize_pointcloud_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size
     
     return fig
 ##------------------------------------------------------------------------------
-def visualize_boxes_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
+def render_3dbox_in_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
     """ 
     Draw lidar points
     :parma boxes ([Box]): list of Box objects
