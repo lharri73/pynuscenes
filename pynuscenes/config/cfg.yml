@@ -61,4 +61,3 @@ IMG_ID_LEN: 8                     # length of string image ID
 PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
 CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
 FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
-LOG_OUT_DIR: "../../output/logs"  # logging output directory

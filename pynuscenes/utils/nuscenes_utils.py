@@ -9,12 +9,6 @@ from pynuscenes.utils import constants as NS_C
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
 
 
-def quaternion_to_ry(quat: Quaternion):
-    v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
-    yaw = np.arctan2(v[1], v[0])
-    return yaw
-
-##------------------------------------------------------------------------------
 def map_pointcloud_to_camera(pointcloud, cam_cs_record, cam_pose_record,
                             pointsensor_pose_record=None, coordinates='vehicle'):
     """
@@ -468,3 +462,7 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
             cornerList.append(this_box_corners)
     return np.array(cornerList), mask
 ##------------------------------------------------------------------------------
+def quaternion_to_ry(quat: Quaternion):
+    v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
+    yaw = np.arctan2(v[1], v[0])
+    return yaw

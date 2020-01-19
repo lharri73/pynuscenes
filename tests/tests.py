@@ -9,6 +9,7 @@ from pynuscenes.utils.io_utils import save_fig
 import pynuscenes.utils.nuscenes_utils as nsutils
 from pynuscenes.nuscenes_dataset import NuscenesDataset
 
+##------------------------------------------------------------------------------
 def test_visualization(nusc):
 
     for sample in tqdm(nusc):
@@ -26,7 +27,6 @@ def test_visualization(nusc):
         # plt.show(block=False)
         plt.savefig('0_camera_radar.jpg')
 
-
         ## Render one sensor using nuscenes devkit API
         sample_data_token = sample['camera'][0]['token']
         nusc.render_sample_data(sample_data_token)
@@ -38,24 +38,18 @@ def test_visualization(nusc):
         #                     coordinates=nusc.cfg.COORDINATES)
         # input('press enter to continue')
         
-        ## Render sample using nuscenes_dataset API in 2D
-        figure = nsvis.visualize_sample_2d(sample, 
-                                     coordinates=nusc.cfg.COORDINATES, 
-                                     out_path='1_camera_radar.jpg')
         # plt.show(block=False)
         input('press enter to continue')
         plt.close(fig=figure)
 ##------------------------------------------------------------------------------
 def test_new_viz(nusc):
-    # fig, ax = plt.subplots(1, 1, figsize=(16, 9))
     
-    for i, sample in enumerate(nusc):
+    for i in range(10, len(nusc)):
+        sample = nusc[i]
         print('sample {}'.format(i))
         ## Render whole sample is 2D
         figure = nsvis.render_sample_in_2d(sample, out_path='1_camera_radar.jpg')
         
-        # ax2 = nsvis.render_pc_in_bev(radar_pc, point_size=5)
-        # fig.savefig('0_sample_img.jpg')
         plt.cla()
         input('here')
 

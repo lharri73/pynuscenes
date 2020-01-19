@@ -21,6 +21,9 @@ def render_sample_in_2d(sample, out_path=None):
     :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
     :return out_path: Path to save the figure at
     """
+    ## Birds Eye View x and y limits
+    x_lim=(-30, 30)
+    y_lim=(-30, 30)
 
     ## Determine the grid size for cameras
     if len(sample['camera']) == 1:
@@ -41,7 +44,7 @@ def render_sample_in_2d(sample, out_path=None):
         ## Plot LIDAR data
         if 'lidar' in sample:
             lidar_pc = sample['lidar']['pointcloud']
-            render_pc_in_bev(lidar_pc, ax=ax2, point_size=2, x_lim=(-30, 30), y_lim=(-30, 30))
+            render_pc_in_bev(lidar_pc, ax=ax2, point_size=2, x_lim=x_lim, y_lim=y_lim)
             
             lidar_pc_cam, depth = nsutils.map_pointcloud_to_camera(
                                             lidar_pc,
@@ -54,7 +57,7 @@ def render_sample_in_2d(sample, out_path=None):
         ## Plot Radar data
         if 'radar' in sample:
             radar_pc = sample['radar']['pointcloud']
-            render_pc_in_bev(radar_pc, ax=ax2, point_size=10, x_lim=(-30, 30), y_lim=(-30, 30))
+            render_pc_in_bev(radar_pc, ax=ax2, point_size=10, x_lim=x_lim, y_lim=y_lim)
 
             radar_pc_cam, depth = nsutils.map_pointcloud_to_camera(
                                             radar_pc,
@@ -66,6 +69,7 @@ def render_sample_in_2d(sample, out_path=None):
             
         ## Plot annotations on image
         for box in sample['anns']:
+            render_3dbox_in_bev([box], ax2, x_lim=x_lim, y_lim=y_lim)
             box = nsutils.map_annotation_to_camera(box, 
                                 cam_cs_record = cam['cs_record'],
                                 cam_pose_record = cam['pose_record'],
@@ -169,7 +173,7 @@ def render_3dbox_in_image(box, img, cam_intrinsic, ax=None):
     """
     Render 3D boxes on an image. Boxes must be in camera's coordinate system
     :param boxes (Box): 3D boxes 
-    :param img (ndarray<H,W,3>): image in BGR format
+    :param img (ndarray<H,W,3>): image
     :param cam_cs_record (dict): Camera cs_record
     :param ax (pyplot ax): Axes onto which to render
     """
@@ -188,6 +192,28 @@ def render_3dbox_in_image(box, img, cam_intrinsic, ax=None):
     ax.set_ylim(h, 0)
     ax.axis('off')
     ax.set_aspect('equal')
+    
+    return ax
+##------------------------------------------------------------------------------
+def render_3dbox_in_bev(boxes, ax=None, x_lim=(-20, 20), y_lim=(-20, 20)):
+    """
+    Render 3D boxes in Birds Eye View (BEV).
+    :param boxes (Box): List of 3D boxes 
+    :param ax (pyplot ax): Axes onto which to render
+    :param x_lim (int, int): x (min, max) range for plotting
+    :param y_lim (int, int): y (min, max) range for plotting
+    """
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(9, 16))
+
+    view = np.eye(4)    # bev view
+    for box in boxes:
+        box.render(ax, view=view, normalize=False)
+
+    # Limit visible range.
+    ax.set_xlim(x_lim[0], x_lim[1])
+    ax.set_ylim(y_lim[0], y_lim[1])
+    # ax.axis('off')
     
     return ax
 ##------------------------------------------------------------------------------
