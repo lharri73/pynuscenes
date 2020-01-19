@@ -139,14 +139,13 @@ class NuscenesDataset(NuScenes):
             elif 'RADAR' in channel:
                 radar.append(sample)
             elif 'LIDAR' in channel:
-                lidar = sample
+                frame['lidar']=sample
             else:
                 raise Exception('Channel not recognized.')
         
         ## Add sensors to the frame dictionary
         if len(camera): frame['camera']=camera
         if len(radar): frame['radar']=radar
-        if len(lidar): frame['lidar']=lidar
 
         ## Add annotation tokens for select categories
         ## TODO: add filtering based on num_radar/num_lidar points here
