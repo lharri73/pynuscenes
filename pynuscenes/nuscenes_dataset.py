@@ -39,7 +39,7 @@ class NuscenesDataset(NuScenes):
             'SPLIT not valid.'
         assert self.cfg.SAMPLE_MODE in ["all_cam", "one_cam"], \
             'SAMPLE_MODE not valid.'
-
+        
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.dataroot,
                          verbose = self.cfg.VERBOSE)
@@ -63,6 +63,15 @@ class NuscenesDataset(NuScenes):
         :return len (int): number of sample in the dataset
         """
         return len(self.db['frames'])
+    ##--------------------------------------------------------------------------
+    def get_categories(self):
+        """
+        Return dataset categories and their IDs
+        """
+        categories = {}
+        for cat in self.cfg.CATEGORIES.values():
+            categories[cat] = self.cfg.CAT_ID[cat]
+        return categories
     ##--------------------------------------------------------------------------
     def generate_db(self, out_dir=None):
         """

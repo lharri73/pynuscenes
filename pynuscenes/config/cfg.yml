@@ -3,10 +3,23 @@ VERSION: "v1.0-mini"            # nuscenes dataset version
 SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                   # enable verbose mode
 
-## DATABASE ####################################################################
+## DATLOADER ####################################################################
 SAMPLE_MODE: "one_cam"    # sample structure
                           # "one_cam": sample contains one image from one camera
                           # "all_cam" sample contains images from all cameras
+
+COORDINATES: "vehicle"       # coordinate system to return all data in
+                            # "vehicle" or "global"
+ANN_REF_FRAME: "LIDAR_TOP"  # Annotation reference frame for vehicle pose
+
+FILTER_PC: True           # include only points inside the image ("one_cam" mode only)
+FILTER_ANNS: True         # include only annotations inside the image ("one_cam" mode only)
+
+LIDAR_SWEEPS: 1           # number of LIDAR sweeps
+RADAR_SWEEPS: 1           # number of Radar sweeps
+BOX_VELOCITY: False       # calculate velocity for each annotation
+MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
+                          # (0 for no limit on distance)
 
 ## sensors to include in the databse. All sensors not in this list are ignored.
 SENSORS: [
@@ -24,40 +37,42 @@ SENSORS: [
   "LIDAR_TOP",
 ]
 
-## categories to include in database and their name mapping. 
-## All categories not in this dictionary are ignored.
+## categories to include in database and their corresponding name mapping.
+## Any category not in this dictionary is ignored.
 CATEGORIES: {
-  # 'movable_object.barrier':               'barrier',
-  'vehicle.bicycle':                      'bicycle',
-  'vehicle.bus.bendy':                    'bus',
-  'vehicle.bus.rigid':                    'bus',
   'vehicle.car':                          'car',
-  'vehicle.construction':                 'construction_vehicle',
-  'vehicle.motorcycle':                   'motorcycle',
+  'vehicle.truck':                        'truck',
+  'vehicle.trailer':                      'trailer',
   'human.pedestrian.adult':               'pedestrian',
   'human.pedestrian.child':               'pedestrian',
   'human.pedestrian.construction_worker': 'pedestrian',
   'human.pedestrian.police_officer':      'pedestrian',
+  'vehicle.bus.bendy':                    'bus',
+  'vehicle.bus.rigid':                    'bus',
+  'vehicle.bicycle':                      'bicycle',
+  'vehicle.motorcycle':                   'motorcycle',
+  'vehicle.construction':                 'construction_vehicle',
   # 'movable_object.trafficcone':           'traffic_cone',
-  'vehicle.trailer':                      'trailer',
-  'vehicle.truck':                        'truck',
+  # 'movable_object.barrier':               'barrier',
 }
-## DATALOADER ##################################################################
-COORDINATES: "vehicle"       # coordinate system to return all data in
-                            # "vehicle" or "global"
-ANN_REF_FRAME: "LIDAR_TOP"  # Annotation reference frame for vehicle pose
 
-FILTER_PC: True           # include only points inside the image ("one_cam" mode only)
-FILTER_ANNS: True         # include only annotations inside the image ("one_cam" mode only)
-
-LIDAR_SWEEPS: 1           # number of LIDAR sweeps
-RADAR_SWEEPS: 1           # number of Radar sweeps
-BOX_VELOCITY: False       # calculate velocity for each annotation
-MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
-                          # (0 for no limit on distance)
+## Category IDs
+CAT_ID: {
+  'car': 1, 
+  'truck': 2, 
+  'trailer': 3, 
+  'pedestrian': 4, 
+  'bus': 5,
+  'bicycle': 6,
+  'motorcycle': 7, 
+  'construction_vehicle': 8, 
+  # 'traffic_cone': 9,
+  # 'barrier': 10
+}
 
 ## MISC ########################################################################
 IMG_ID_LEN: 8                     # length of string image ID
 PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
 CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
 FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
+LOG_OUT_DIR: "../../output/logs"  # logging output directory
