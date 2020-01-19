@@ -106,12 +106,12 @@ class NuscenesDataset(NuScenes):
         self.logger.info('Number of samples in {} split: {}'.format(self.cfg.SPLIT,
                                                           str(len(all_frames))))
         ## if an output directory is specified, write to a pkl file
-        if out_dir is not None:
-            self.logger.info('Saving db to pickle file')
-            os.mkdirs(out_dir, exist_ok=True)
-            db_filename = "{}_db.pkl".format(self.cfg.SPLIT)
-            with open(os.path.join(out_dir, db_filename), 'wb') as f:
-                pickle.dump(db['test'], f)
+        # if out_dir is not None:
+        #     self.logger.info('Saving db to pickle file')
+        #     os.mkdirs(out_dir, exist_ok=True)
+        #     db_filename = "{}_db.pkl".format(self.cfg.SPLIT)
+        #     with open(os.path.join(out_dir, db_filename), 'wb') as f:
+        #         pickle.dump(db['test'], f)
         return db
     ##--------------------------------------------------------------------------
     def _get_sample_frames(self, sample_record):
@@ -197,17 +197,20 @@ class NuscenesDataset(NuScenes):
             lidar_pc, lidar_cs, lidar_pose_record = self._get_pointsensor_data('lidar',
                                                             sample_record,
                                                             frame['lidar']['token'],
-                                                            self.cfg.LIDAR_SWEEPS)
+                                                            nsweeps=self.cfg.LIDAR_SWEEPS)
             
             ## Filter points outside the image
             if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "one_cam":
                 cam = frame['camera'][0]
-                _, _, mask = nsutils.map_pointcloud_to_image(lidar_pc,
-                                        cam_cs_record=cam['cs_record'],
-                                        cam_pose_record=cam['pose_record'],
-                                        img_shape=(1600,900),
-                                        pointsensor_pose_record=lidar_pose_record,
-                                        coordinates=frame['coordinates'])
+                lidar_pc_cam, _ = nsutils.map_pointcloud_to_camera(lidar_pc, 
+                                            cam_cs_record=cam['cs_record'],
+                                            cam_pose_record=cam['pose_record'],
+                                            pointsensor_pose_record=lidar_pose_record,
+                                            coordinates=frame['coordinates'])
+                cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
+                _, _, mask = nsutils.map_pointcloud_to_image(lidar_pc_cam, 
+                                                             cam_intrinsic,
+                                                             img_shape=(1600,900))               
                 lidar_pc.points = lidar_pc.points[:,mask]
             
             frame['lidar']['pointcloud'] = lidar_pc
@@ -221,17 +224,28 @@ class NuscenesDataset(NuScenes):
                 radar_pc, _ , radar_pose_record = self._get_pointsensor_data('radar',
                                                         sample_record, 
                                                         radar['token'], 
-                                                        self.cfg.RADAR_SWEEPS)
+                                                        nsweeps=self.cfg.RADAR_SWEEPS)
             
                 ## Filter points outside the image
                 if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "one_cam":
                     cam = frame['camera'][0]
-                    _, _, mask = nsutils.map_pointcloud_to_image(radar_pc,
-                                            cam_cs_record=cam['cs_record'],
-                                            cam_pose_record=cam['pose_record'],
-                                            pointsensor_pose_record=radar_pose_record,
-                                            coordinates=frame['coordinates'])
+                    radar_pc_cam, _ = nsutils.map_pointcloud_to_camera(radar_pc, 
+                                                cam_cs_record=cam['cs_record'],
+                                                cam_pose_record=cam['pose_record'],
+                                                pointsensor_pose_record=radar_pose_record,
+                                                coordinates=frame['coordinates'])
+                    cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
+                    _, _, mask = nsutils.map_pointcloud_to_image(radar_pc_cam, 
+                                                                cam_intrinsic,
+                                                                img_shape=(1600,900))               
                     radar_pc.points = radar_pc.points[:,mask]
+
+                    # _, _, mask = nsutils.map_pointcloud_to_image(radar_pc,
+                    #                         cam_cs_record=cam['cs_record'],
+                    #                         cam_pose_record=cam['pose_record'],
+                    #                         pointsensor_pose_record=radar_pose_record,
+                    #                         coordinates=frame['coordinates'])
+                    # radar_pc.points = radar_pc.points[:,mask]
                 
                 all_radar_pcs.points = np.hstack((all_radar_pcs.points, radar_pc.points))
 

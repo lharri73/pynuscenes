@@ -9,27 +9,19 @@ from pynuscenes.utils import constants as NS_C
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
 
 
-def quaternion_to_ry(quat: Quaternion):
-    v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
-    yaw = np.arctan2(v[1], v[0])
-    return yaw
-##------------------------------------------------------------------------------
-def map_pointcloud_to_image(pointcloud, cam_cs_record, cam_pose_record, img_shape=(1600,900),
+def map_pointcloud_to_camera(pointcloud, cam_cs_record, cam_pose_record,
                             pointsensor_pose_record=None, coordinates='vehicle'):
     """
-    Given a point sensor (lidar/radar) point cloud and camera image, 
-    map the point cloud to the image.
+    Map the point cloud to camera coordinates.
     
-    :param pc (PointCloud): point cloud in vehicle or global coordinates
+    :param pc (PointCloud): point cloud in vehicle/global coordinates
     :param cam_cs_record (dict): Camera calibrated sensor record
     :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera
-    :param img_shape: shape of the image (width, height)
     :param pointsensor_pose_record (dict): Ego vehicle pose record for the timestamp of the point sensor
     :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 
-    :return points (nparray), depth, mask: Mapped and filtered points with depth and mask
+    :return points (nparray), depth: Points in camera's coordinates
     """
     pc = copy.deepcopy(pointcloud)
-    (width, height) = img_shape
     
     ## Transform point cloud into the camera coordinates via global
     ## First step: transform to global frame if in vehicle frame
@@ -46,8 +38,23 @@ def map_pointcloud_to_image(pointcloud, cam_cs_record, cam_pose_record, img_shap
     ## Grab the depths (camera frame z axis points away from the camera).
     depths = pc.points[2, :]
 
+    return pc, depths
+##------------------------------------------------------------------------------
+def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
+    """
+    Map point cloud from camera coordinates to the image
+    
+    :param pc (PointCloud): point cloud in vehicle or global coordinates
+    :param cam_cs_record (dict): Camera calibrated sensor record
+    :param img_shape: shape of the image (width, height)
+    :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 
+    :return points (nparray), depth, mask: Mapped and filtered points with depth and mask
+    """
+    pc = copy.deepcopy(pointcloud)
+    (width, height) = img_shape
+    depths = pc.points[2, :]
+    
     ## Take the actual picture
-    cam_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
     points = view_points(pc.points[:3, :], cam_intrinsic, normalize=True)
 
     ## Remove points that are either outside or behind the camera. 
@@ -62,7 +69,7 @@ def map_pointcloud_to_image(pointcloud, cam_cs_record, cam_pose_record, img_shap
 
     return points, depths, mask
 ##------------------------------------------------------------------------------
-def map_annotation_to_image(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
+def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
                             ref_pose_record=None, coordinates='vehicle'):
     """
     Given an annotation Box and camera information, map the box to the image.
@@ -455,3 +462,7 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
             cornerList.append(this_box_corners)
     return np.array(cornerList), mask
 ##------------------------------------------------------------------------------
+def quaternion_to_ry(quat: Quaternion):
+    v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
+    yaw = np.arctan2(v[1], v[0])
+    return yaw

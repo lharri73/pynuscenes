@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib
 # matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import pynuscenes.utils.nuscenes_utils as nsutils
+import pynuscenes.utils.visualize as nsvis
 from pynuscenes.utils.io_utils import save_fig
+import pynuscenes.utils.nuscenes_utils as nsutils
 from pynuscenes.nuscenes_dataset import NuscenesDataset
-from pynuscenes.utils.visualize import visualize_sample_3d, visualize_sample_2d
-from pynuscenes.utils.visualize import draw_gt_box_on_image
 
+##------------------------------------------------------------------------------
 def test_visualization(nusc):
 
     for sample in tqdm(nusc):
@@ -27,7 +27,6 @@ def test_visualization(nusc):
         # plt.show(block=False)
         plt.savefig('0_camera_radar.jpg')
 
-
         ## Render one sensor using nuscenes devkit API
         sample_data_token = sample['camera'][0]['token']
         nusc.render_sample_data(sample_data_token)
@@ -35,17 +34,25 @@ def test_visualization(nusc):
         plt.savefig('0_camera.jpg')
 
         ## Render sample using nuscenes_dataset API in 3D
-        # visualize_sample_3d(sample, 
+        # nsvis.render_sample_in_3d(sample, 
         #                     coordinates=nusc.cfg.COORDINATES)
         # input('press enter to continue')
         
-        ## Render sample using nuscenes_dataset API in 2D
-        figure = visualize_sample_2d(sample, 
-                                     coordinates=nusc.cfg.COORDINATES, 
-                                     out_path='1_camera_radar.jpg')
         # plt.show(block=False)
         input('press enter to continue')
         plt.close(fig=figure)
+##------------------------------------------------------------------------------
+def test_new_viz(nusc):
+    
+    for i in range(10, len(nusc)):
+        sample = nusc[i]
+        print('sample {}'.format(i))
+        ## Render whole sample is 2D
+        figure = nsvis.render_sample_in_2d(sample, out_path='1_camera_radar.jpg')
+        
+        plt.cla()
+        input('here')
+
 ##------------------------------------------------------------------------------
 def test_points_in_image(nusc):
     from pynuscenes.utils.nuscenes_utils import (points_in_image, 
@@ -85,7 +92,7 @@ def test_dataset_mapper(nusc):
     for i, sample in enumerate(nusc):
         print(len(sample['anns']))
         
-        # figure = visualize_sample_2d(sample, 
+        # figure = nsvis.visualize_sample_2d(sample, 
         #                              coordinates=nusc.cfg.COORDINATES, 
         #                              out_path='1_camera_radar.jpg')
         
@@ -103,7 +110,8 @@ if __name__ == "__main__":
     nusc = NuscenesDataset(dataroot='../data/nuscenes',
                            cfg='../pynuscenes/config/cfg.yml')
     
-    test_visualization(nusc)
+    # test_visualization(nusc)
     # test_points_in_image(nusc)
     # test_database(nusc)
     # test_dataset_mapper(nusc)
+    test_new_viz(nusc)
