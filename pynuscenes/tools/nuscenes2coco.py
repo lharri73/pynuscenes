@@ -7,7 +7,6 @@ from cocoplus.coco import COCO_PLUS
 from cocoplus.utils.coco_utils import COCO_CATEGORIES
 import pynuscenes.utils.nuscenes_utils as nsutils
 from pynuscenes.nuscenes_dataset import NuscenesDataset
-from pynuscenes.utils.visualize import draw_gt_box_on_image
 from nuscenes.nuscenes import NuScenes
 from pynuscenes.utils import log, io_utils
 """

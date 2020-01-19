@@ -75,7 +75,7 @@ def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
 
     return points, depths, mask
 ##------------------------------------------------------------------------------
-def map_annotation_to_image(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
+def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
                             ref_pose_record=None, coordinates='vehicle'):
     """
     Given an annotation Box and camera information, map the box to the image.

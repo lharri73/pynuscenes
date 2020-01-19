@@ -4,12 +4,10 @@ import numpy as np
 import matplotlib
 # matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import pynuscenes.utils.nuscenes_utils as nsutils
-from pynuscenes.utils.io_utils import save_fig
-from pynuscenes.nuscenes_dataset import NuscenesDataset
-from pynuscenes.utils.visualize import render_sample_in_3d, visualize_sample_2d
-from pynuscenes.utils.visualize import draw_gt_box_on_image
 import pynuscenes.utils.visualize as nsvis
+from pynuscenes.utils.io_utils import save_fig
+import pynuscenes.utils.nuscenes_utils as nsutils
+from pynuscenes.nuscenes_dataset import NuscenesDataset
 
 def test_visualization(nusc):
 
@@ -36,12 +34,12 @@ def test_visualization(nusc):
         plt.savefig('0_camera.jpg')
 
         ## Render sample using nuscenes_dataset API in 3D
-        # render_sample_in_3d(sample, 
+        # nsvis.render_sample_in_3d(sample, 
         #                     coordinates=nusc.cfg.COORDINATES)
         # input('press enter to continue')
         
         ## Render sample using nuscenes_dataset API in 2D
-        figure = visualize_sample_2d(sample, 
+        figure = nsvis.visualize_sample_2d(sample, 
                                      coordinates=nusc.cfg.COORDINATES, 
                                      out_path='1_camera_radar.jpg')
         # plt.show(block=False)
@@ -49,27 +47,15 @@ def test_visualization(nusc):
         plt.close(fig=figure)
 ##------------------------------------------------------------------------------
 def test_new_viz(nusc):
-    fig, ax = plt.subplots(1, 1, figsize=(16, 9))
+    # fig, ax = plt.subplots(1, 1, figsize=(16, 9))
     
     for i, sample in enumerate(nusc):
         print('sample {}'.format(i))
-        lidar_pc = sample['lidar']['pointcloud']
-        radar_pc = sample['radar']['pointcloud']
-        image = sample['camera'][0]['image']
-        cam_cs_record = sample['camera'][0]['cs_record']
-        cam_pose_record = sample['camera'][0]['pose_record']
-        lidar_pose_rec = sample['lidar']['pose_record']
-        radar_pose_rec = sample['radar']['pose_record']
-        cam_intrinsics = np.array(cam_cs_record['camera_intrinsic'])
-
-        lidar_pc, depth = nsutils.map_pointcloud_to_camera(lidar_pc,
-                                        cam_cs_record,
-                                        cam_pose_record=cam_pose_record,
-                                        pointsensor_pose_record=lidar_pose_rec)
+        ## Render whole sample is 2D
+        figure = nsvis.render_sample_in_2d(sample, out_path='1_camera_radar.jpg')
         
-        ax = nsvis.render_pc_in_image(lidar_pc, image, cam_intrinsics, ax=ax, point_size=3)
         # ax2 = nsvis.render_pc_in_bev(radar_pc, point_size=5)
-        fig.savefig('0_sample_img.jpg')
+        # fig.savefig('0_sample_img.jpg')
         plt.cla()
         input('here')
 
@@ -112,7 +98,7 @@ def test_dataset_mapper(nusc):
     for i, sample in enumerate(nusc):
         print(len(sample['anns']))
         
-        # figure = visualize_sample_2d(sample, 
+        # figure = nsvis.visualize_sample_2d(sample, 
         #                              coordinates=nusc.cfg.COORDINATES, 
         #                              out_path='1_camera_radar.jpg')
         

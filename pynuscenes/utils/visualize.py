@@ -13,7 +13,7 @@ import pynuscenes.utils.nuscenes_utils as nsutils
 from nuscenes.utils.geometry_utils import view_points, box_in_image
 
 
-def visualize_sample_2d(sample, coordinates, out_path=None):
+def render_sample_in_2d(sample, out_path=None):
     """
     Visualize sample data from all sensors in 2D
     
@@ -24,61 +24,61 @@ def visualize_sample_2d(sample, coordinates, out_path=None):
 
     ## Determine the grid size for cameras
     if len(sample['camera']) == 1:
-        ## Only one image
-        figure, ax = plt.subplots(1, 1, figsize=(16, 9))
-        ax = [ax]
+        figure1, ax1 = plt.subplots(1, 1, figsize=(16, 9))
+        ax1 = [ax1]
     else:
         ## 6 images in two rows
-        figure, ax = plt.subplots(2, 3, figsize=(16, 9))
-        ax = ax.ravel()
+        figure1, ax1 = plt.subplots(2, 3, figsize=(16, 9))
+        ax1 = ax1.ravel()
+    figure2, ax2 = plt.subplots(1, 1, figsize=(16, 9))
 
-    ## Plot pointclouds on image
+    ## Plot camera view
     for i, cam in enumerate(sample['camera']):
         image = cam['image']
-        ax[i].imshow(image)
+        ax1[i].imshow(image)
+        cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
         
         ## Plot LIDAR data
         if 'lidar' in sample:
             lidar_pc = sample['lidar']['pointcloud']
-            lidar_pose_rec = sample['lidar']['pose_record']
-            lidar_pc, color, _ = nsutils.map_pointcloud_to_image(lidar_pc,
+            render_pc_in_bev(lidar_pc, ax=ax2, point_size=2, x_lim=(-30, 30), y_lim=(-30, 30))
+            
+            lidar_pc_cam, depth = nsutils.map_pointcloud_to_camera(
+                                            lidar_pc,
                                             cam['cs_record'],
-                                            cam_pose_record=cam['pose_record'],
-                                            img_shape=(1600,900),
-                                            pointsensor_pose_record=lidar_pose_rec,
-                                            coordinates=coordinates)
-            draw_points_on_image(image, lidar_pc, color, ax=ax[i], dot_size=2)
-
+                                            cam['pose_record'],
+                                            sample['lidar']['pose_record'],
+                                            coordinates=sample['coordinates'])
+            render_pc_in_image(lidar_pc_cam, image, cam_intrinsic, ax=ax1[i], point_size=2)
+        
         ## Plot Radar data
         if 'radar' in sample:
             radar_pc = sample['radar']['pointcloud']
-            radar_pose_rec = sample['radar']['pose_record']
-            radar_pc, color, _ = nsutils.map_pointcloud_to_image(radar_pc,
+            render_pc_in_bev(radar_pc, ax=ax2, point_size=10, x_lim=(-30, 30), y_lim=(-30, 30))
+
+            radar_pc_cam, depth = nsutils.map_pointcloud_to_camera(
+                                            radar_pc,
                                             cam['cs_record'],
-                                            cam_pose_record=cam['pose_record'],
-                                            img_shape=(1600,900),
-                                            pointsensor_pose_record=radar_pose_rec,
-                                            coordinates=coordinates)
-            draw_points_on_image(image, radar_pc, color, ax=ax[i], dot_size=18, edge_color=(1,1,1))
-        
+                                            cam['pose_record'],
+                                            sample['radar']['pose_record'],
+                                            coordinates=sample['coordinates'])
+            render_pc_in_image(radar_pc_cam, image, cam_intrinsic, ax=ax1[i], point_size=10)
+            
         ## Plot annotations on image
-        cam_cs_rec = cam['cs_record']
         for box in sample['anns']:
-            box = nsutils.map_annotation_to_image(box, 
+            box = nsutils.map_annotation_to_camera(box, 
                                 cam_cs_record = cam['cs_record'],
                                 cam_pose_record = cam['pose_record'],
                                 ref_pose_record = sample['ref_pose_record'],
-                                coordinates = coordinates)
-            # if coordinates=='global':
-            #     box = nsutils.global_to_vehicle(box, cam['pose_record'])
-            # box = nsutils.vehicle_to_sensor(box, cam_cs_rec)
-            draw_gt_box_on_image(box, image, cam_cs_rec, ax[i])
+                                coordinates = sample['coordinates'])
+            render_3dbox_in_image(box, image, cam_intrinsic, ax1[i])
 
     ## Display and save the figures
     if out_path is not None:
-        save_fig(out_path, fig=figure, format='jpg')
+        save_fig(out_path, fig=figure1, format='jpg')
+        save_fig('bev_'+out_path, fig=figure2, format='jpg')
     
-    return figure
+    return figure1
 ##------------------------------------------------------------------------------
 def render_sample_in_3d(sample, coordinates, fig=None):
     """
@@ -165,6 +165,32 @@ def render_pc_in_bev(pc, ax=None, point_size=1, x_lim=(-20, 20), y_lim=(-20, 20)
     ax.set_ylim(y_lim[0], y_lim[1])
     return ax
 ##------------------------------------------------------------------------------
+def render_3dbox_in_image(box, img, cam_intrinsic, ax=None):
+    """
+    Render 3D boxes on an image. Boxes must be in camera's coordinate system
+    :param boxes (Box): 3D boxes 
+    :param img (ndarray<H,W,3>): image in BGR format
+    :param cam_cs_record (dict): Camera cs_record
+    :param ax (pyplot ax): Axes onto which to render
+    """
+    if not box_in_image(box, cam_intrinsic, (1600, 900)):
+        return
+    
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(9, 16))
+
+    h, w, _ = img.shape
+    ax.imshow(img)
+    box.render(ax, view=cam_intrinsic, normalize=True)
+
+    # Limit visible range.
+    ax.set_xlim(0, w)
+    ax.set_ylim(h, 0)
+    ax.axis('off')
+    ax.set_aspect('equal')
+    
+    return ax
+##------------------------------------------------------------------------------
 def render_pc_in_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
             pts_mode='point', pts_color=None):
     """ 
@@ -225,23 +251,6 @@ def render_3dbox_in_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
     
     return fig
 ##------------------------------------------------------------------------------
-def draw_points_on_image(image, points, colors, ax=None, dot_size=0.2, out_path=None, edge_color='face'):
-    """
-    Draw points on an image. Points must be already in image coordinates.
-    """
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(9, 16))
-
-    ax.margins(x=0,y=0)
-    ax.imshow(image)
-
-    # colors = np.minimum(1, dists / axes_limit / np.sqrt(2))
-    ax.scatter(points[0, :], points[1, :], c=colors, s=dot_size, edgecolors=edge_color)
-    ax.axis('off')
-
-    if out_path is not None:
-        save_fig(out_path, format='pdf')
-##------------------------------------------------------------------------------
 def draw_boxes_by_corner_3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1), 
                             line_width=1, draw_text=True, text_scale=(.5,.5,.5), 
                             color_list=None):
@@ -294,34 +303,8 @@ def draw_boxes_by_corner_3d(gt_boxes3d, box_names=None, fig=None, color=(1,1,1),
               distance=62.0, figure=fig)
     return fig
 ##------------------------------------------------------------------------------
-def draw_gt_box_on_image(box, img, cam_cs_record, ax=None):
-    """
-    Show 3D boxes on the image. Boxes must be in camera's coordinate system
-    :param boxes (Box): 3D boxes 
-    :param img (ndarray<H,W,3>): image in BGR format
-    :param cam_cs_record (dict): Camera cs_record
-    :param ax (pyplot ax): Axes onto which to render
-    """
-    cam_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
-    if not box_in_image(box, cam_intrinsic, (1600, 900)):
-        return
-    
-    ## Init axes
-    if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(9, 16))
-    # Show image.
-    ax.imshow(img)
-    # Show boxes.
-    box.render(ax, view=cam_intrinsic, normalize=True)
-
-    # Limit visible range.
-    ax.set_xlim(0, img.shape[1])
-    ax.set_ylim(img.shape[0], 0)
-    ax.axis('off')
-    ax.set_aspect('equal')
-##------------------------------------------------------------------------------
 def show_3dBoxes_on_image(boxes, img, cam_cs_record):
-    """
+    """ ## TODO: Check compatibility
     Show 3D boxes in [x,y,z,w,l,h,ry] format on the image
     :param boxes (ndarray<N,7>): 3D boxes 
     :param img (ndarray<H,W,3>): image in BGR format
@@ -336,22 +319,16 @@ def show_3dBoxes_on_image(boxes, img, cam_cs_record):
         cv2.imshow('image', img)
         cv2.waitKey(1)
 ##------------------------------------------------------------------------------
-def show_2dBoxes_on_image(img_corners_2d, image, 
-                          img_corners_3d=None,
-                          out_dir=None,
-                          img_id=None):
-    """
+def render_2dbox_in_image(bbox, image, out_dir=None, img_id=None):
+    """ ## TODO: Check compatibility
     Show 2D boxes in [xyxy] format on the image
-    :param img_corners_2d (list): list of 2D boxes 
+    :param bbox (list): list of 2D boxes in [xyxy] format
     :param img (ndarray<H,W,3>): image in BGR format
-    :param img_corners_3d (ndarray<N,7>): Optional 3D boxes
     
     """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    for i, this_box_corners in enumerate(img_corners_2d):
+    for i, this_box_corners in enumerate(bbox):
         img = copy.deepcopy(image)
-        if img_corners_3d is not None:
-            img = render_cv2(img, img_corners_3d[i])
         cv2.rectangle(img, (int(this_box_corners[0]), int(this_box_corners[1])), 
                         (int(this_box_corners[2]), int(this_box_corners[3])), 
                         (0,255,0), 2)
@@ -365,50 +342,10 @@ def show_2dBoxes_on_image(img_corners_2d, image,
             cv2.imwrite(out_file, img)
             continue
 ##------------------------------------------------------------------------------
-# def render_cv2(im: np.ndarray,
-#                 corners: np.ndarray,
-#                 colors = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
-#                 linewidth: int = 2) -> None:
-#     """
-#     Renders box using OpenCV2.
-#     :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
-#     :param corners: 
-#     :param colors: ((R, G, B), (R, G, B), (R, G, B)). Colors for front, side & rear.
-#     :param linewidth: Linewidth for plot.
-#     """
-#     def draw_rect(selected_corners, color):
-#         prev = selected_corners[-1]
-#         for corner in selected_corners:
-#             cv2.line(im,
-#                         (int(prev[0]), int(prev[1])),
-#                         (int(corner[0]), int(corner[1])),
-#                         color, linewidth)
-#             prev = corner
-
-#     # Draw the sides
-#     for i in range(4):
-#         cv2.line(im,
-#                     (int(corners.T[i][0]), int(corners.T[i][1])),
-#                     (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
-#                     colors[2][::-1], linewidth)
-
-#     # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
-#     draw_rect(corners.T[:4], colors[0][::-1])
-#     draw_rect(corners.T[4:], colors[1][::-1])
-
-#     # Draw line indicating the front
-#     center_bottom_forward = np.mean(corners.T[2:4], axis=0)
-#     center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-#     cv2.line(im,
-#                 (int(center_bottom[0]), int(center_bottom[1])),
-#                 (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
-#                 colors[0][::-1], linewidth)
-#     return im
-##------------------------------------------------------------------------------
 def arrange_images_PIL(image_list: list, 
                        im_size: tuple=(640,360),
                        grid_size: tuple=(2,2)) -> np.ndarray:
-    """
+    """ ## TODO: Check compatibility
     Arranges multiple images into a single image
     
     :param image_list: list of images
