@@ -27,14 +27,7 @@ class NuscenesDataset(NuScenes):
         """
         :param cfg (str): path to the config file
         """
-        self.dataroot = dataroot
         self.cfg = io_utils.yaml_load(cfg, safe_load=True)
-        self.logger = log.getLogger(__name__)
-        self.logger.info('Loading NuScenes')
-        self.frame_id = 0
-        self.image_id = 0
-        self.cfg.COORDINATES = 'vehicle'
-
         ## Sanity checks
         assert self.cfg.SPLIT in _C.NUSCENES_SPLITS[self.cfg.VERSION], \
             'SPLIT not valid.'
@@ -43,6 +36,13 @@ class NuscenesDataset(NuScenes):
         if self.cfg.SAMPLE_MODE == "camera":
             assert sum([1 for key in self.cfg.SENSORS if 'CAM' in key]), \
                 'At least one camera should be in SENSORS when "camera" sample mode is selected.'
+        
+        self.logger = log.getLogger(__name__, console_level=self.cfg.CONSOLE_LOG_LEVEL)
+        self.dataroot = dataroot
+        self.frame_id = 0
+        self.image_id = 0
+        self.cfg.COORDINATES = 'vehicle'
+        self.logger.info('Loading NuScenes')
         
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.dataroot,
