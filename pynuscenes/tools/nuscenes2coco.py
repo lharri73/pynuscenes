@@ -17,13 +17,13 @@ class CocoConverter:
 
     ## Mapping from NuScenes categoies to COCO categoies
     NUSC_COCO_CAT_MAP = {
-        'pedestrian':           {'id': 1, 'name': 'pedestrian', 'supercategory': 'person'},
-        'car':                  {'id': 2, 'name': 'car', 'supercategory': 'vehicle'},
-        'truck':                {'id': 3, 'name': 'truck', 'supercategory': 'vehicle'},
-        'motorcycle':           {'id': 4, 'name': 'motorcycle', 'supercategory': 'vehicle'},
-        'bicycle':              {'id': 5, 'name': 'bicycle', 'supercategory': 'vehicle'},
-        'bus':                  {'id': 6, 'name': 'bus', 'supercategory': 'vehicle'},
-        'trailer':              {'id': 7, 'name': 'trailer', 'supercategory': 'vehicle'},
+        'car':                  {'id': 1, 'name': 'car', 'supercategory': 'vehicle'},
+        'truck':                {'id': 2, 'name': 'truck', 'supercategory': 'vehicle'},
+        'trailer':              {'id': 3, 'name': 'trailer', 'supercategory': 'vehicle'},
+        'pedestrian':           {'id': 4, 'name': 'pedestrian', 'supercategory': 'person'},
+        'bus':                  {'id': 5, 'name': 'bus', 'supercategory': 'vehicle'},
+        'bicycle':              {'id': 6, 'name': 'bicycle', 'supercategory': 'vehicle'},
+        'motorcycle':           {'id': 7, 'name': 'motorcycle', 'supercategory': 'vehicle'},
         'construction_vehicle': {'id': 8, 'name': 'construction_vehicle', 'supercategory': 'vehicle'},
     }
 
@@ -63,12 +63,13 @@ class CocoConverter:
             image = cam['image']
             cam_cs_rec = cam['cs_record']
             cam_pose_rec = cam['pose_record']
+            ref_pose_rec = sample['ref_pose_record']
             img_height, img_width, _ = image.shape
+            coordinates = sample['coordinates']
             anns = sample['anns']
 
             ## Create annotation in coco_dataset format
             this_sample_anns = []  
-            print(len(anns))
             for ann in anns:
                 ## Get equivalent coco category name
                 coco_cat, coco_cat_id, coco_supercat = self.nuscene_cat_to_coco(ann.name)
@@ -76,10 +77,9 @@ class CocoConverter:
                     continue
                 
                 ## Take annotations to the camera frame
-                if self.cfg.COORDINATES == 'global':
-                    ann = nsutils.global_to_vehicle(ann, cam_pose_rec)
-                ann = nsutils.vehicle_to_sensor(ann, cam_cs_rec)
-
+                ann = nsutils.map_annotation_to_camera(ann, cam_cs_rec, cam_pose_rec, 
+                                                       ref_pose_rec, coordinates)
+                
                 ## Get 2D bbox from the 3D annotation
                 view = np.array(cam_cs_rec['camera_intrinsic'])
                 bbox = nsutils.box_3d_to_2d_simple(ann, view, (img_width, img_height))
@@ -92,15 +92,20 @@ class CocoConverter:
                 coco_ann = self.coco_dataset.createAnn(bbox, coco_cat_id, distance=dist)
                 this_sample_anns.append(coco_ann)
             
-            print(len(this_sample_anns))
             ## Get the Radar pointclouds added to dataset
             pc_coco = None
             if 'radar' in sample:
-                pc = sample['radar']['pointcloud'].points
-                pc_coco = np.transpose(pc).tolist()
+                pc = sample['radar']['pointcloud']
+                ## Transform to camera coordinates
+                pc, _ = nsutils.map_pointcloud_to_camera(pc, cam_cs_rec, cam_pose_rec,
+                                                    sample['radar']['pose_record'],
+                                                    coordinates=coordinates)
+                cost = np.transpose(pc.points).tolist()
+                # print(pc_coco)
+                # input('here')
 
             ## Add sample to the COCO dataset
-            img_id = cam['img_id']
+            img_id = cam['image_id']
             coco_img_path = self.coco_dataset.addSample(img=image,
                                         anns=this_sample_anns, 
                                         pointcloud=pc_coco,
@@ -118,10 +123,10 @@ class CocoConverter:
 
             
             ## Uncomment to visualize every sample
-            ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
-            plt.show(block=False)
-            plt.savefig('fig.jpg')
-            input('here plot')
+            # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
+            # # plt.show(block=False)
+            # plt.savefig('fig.jpg')
+            # input('here plot')
 
         self.logger.info('Saving annotations to disk')
         self.coco_dataset.saveAnnsToDisk()

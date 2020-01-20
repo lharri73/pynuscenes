@@ -69,7 +69,7 @@ def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
 
     return points, depths, mask
 ##------------------------------------------------------------------------------
-def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record, img_shape=(1600,900),
+def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record,
                             ref_pose_record=None, coordinates='vehicle'):
     """
     Given an annotation Box and camera information, map the box to the image.
@@ -77,7 +77,6 @@ def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record, img_sha
     :param annotation (Box): annotation box in vehicle or global coordinates
     :param cam_cs_record (dict): Camera calibrated sensor record
     :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera
-    :param img_shape: shape of the image (width, height)
     :param ref_pose_record (dict): reference pose record used for transforming 
         anns from global to vehicle coordinate system
     :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 
@@ -98,12 +97,12 @@ def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record, img_sha
 
     return ann
 ##------------------------------------------------------------------------------
-def box_3d_to_2d_simple(box, p_left, imsize, mode='xywh'):
+def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
         """
         Projects 3D box into image FOV.
         
         :param box: 3D box in camera reference frame.
-        :param p_left: <np.float: 3, 4>. Projection matrix.
+        :param view: <np.float: 3, 4>. Projection matrix.
         :param mode (str): 2D bbox fotmat: 'xywh' or 'xyxy'
         :param imsize: (width, height). Image size.
         :return bbox: Bounding box in image plane or None if box is not in the image.
@@ -118,7 +117,7 @@ def box_3d_to_2d_simple(box, p_left, imsize, mode='xywh'):
             return None
 
         # Project corners that are in front of the camera to 2d to get bbox in pixel coords.
-        imcorners = view_points(corners, p_left, normalize=True)[:2]
+        imcorners = view_points(corners, view, normalize=True)[:2]
         bbox = (np.min(imcorners[0]), np.min(imcorners[1]), np.max(imcorners[0]), np.max(imcorners[1]))
 
         # Crop bbox to prevent it extending outside image.

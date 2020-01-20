@@ -13,7 +13,7 @@ COORDINATES: "vehicle"       # coordinate system to return all data in
 ANN_REF_FRAME: "LIDAR_TOP"  # Annotation reference frame for vehicle pose
 
 FILTER_PC: True           # include only points inside the image ("one_cam" mode only)
-FILTER_ANNS: True         # include only annotations inside the image ("one_cam" mode only)
+FILTER_ANNS: False         # include only annotations inside the image ("one_cam" mode only)
 
 LIDAR_SWEEPS: 1           # number of LIDAR sweeps
 RADAR_SWEEPS: 1           # number of Radar sweeps

@@ -44,6 +44,9 @@ frame = {
         token: str,         # Camera sensor record token
         filename: str,      # Image filename, relative to nuscenes root dir
         channel: str,       # Camera channel (e.g. CAM_FRONT_RIGHT)
+        width: int,         # Image width
+        height: int,        # Image height
+        image_id: int,      # Image ID
         }, ...
     ],
     'lidar': {              # A LIDAR frame dictionaries
@@ -74,10 +77,12 @@ frame = {
         image: nparray,      # Image from this camera
         sc_record: dict,     # Camera sensor calibration parameters
         pose_record: dict,   # Vehicle pose record for the timestamp of the camera
-        img_id: int,         # Image ID
+        image_id: int,
         token: str,
         filename: str,
         channel: str,
+        width: int,
+        height: int,
         }, ...
     ],
     'lidar': {

@@ -30,7 +30,7 @@ class NuscenesDataset(NuScenes):
         self.logger = log.getLogger(__name__)
         self.logger.info('Loading NuScenes')
         self.frame_id = 0
-        self.img_id = 0
+        self.image_id = 0
 
         ## Sanity checks
         assert self.cfg.COORDINATES in ['vehicle', 'global'], \
@@ -144,6 +144,10 @@ class NuscenesDataset(NuScenes):
                     'token': sd_record['token'],
                     'filename': sd_record['filename']}
             if 'CAM' in channel:
+                sample['width'] = sd_record['width']
+                sample['height'] = sd_record['height']
+                sample['image_id'] = self.image_id
+                self.image_id += 1
                 camera.append(sample)
             elif 'RADAR' in channel:
                 radar.append(sample)
@@ -156,13 +160,18 @@ class NuscenesDataset(NuScenes):
         if len(camera): frame['camera']=camera
         if len(radar): frame['radar']=radar
 
-        ## Add annotation tokens for select categories
+        ## Add annotation records for select categories
         ## TODO: add filtering based on num_radar/num_lidar points here
         ann_tokens = sample_record['anns']
         for token in ann_tokens:
             ann = self.get('sample_annotation', token)
-            if ann['category_name'] in self.cfg.CATEGORIES:
+            try:
+                ann['category_name'] = self.cfg.CATEGORIES[ann['category_name']]
                 frame['anns'].append(ann)
+            except:
+                continue
+            # if ann['category_name'] in self.cfg.CATEGORIES:
+            #     frame['anns'].append(ann)
 
         ## if 'one_cam' option is chosen, create as many frames as there are cameras
         if 'camera' in frame and self.cfg.SAMPLE_MODE == "one_cam":
@@ -197,8 +206,6 @@ class NuscenesDataset(NuScenes):
                 frame['camera'][i]['cs_record'] = cs_record
                 frame['camera'][i]['pose_record'] = pose_record
                 frame['camera'][i]['filename'] = filename
-                frame['camera'][i]['img_id'] = self.img_id
-                self.img_id += 1
 
         ## Get LIDAR data
         if 'lidar' in frame:
@@ -247,13 +254,6 @@ class NuscenesDataset(NuScenes):
                                                                 cam_intrinsic,
                                                                 img_shape=(1600,900))               
                     radar_pc.points = radar_pc.points[:,mask]
-
-                    # _, _, mask = nsutils.map_pointcloud_to_image(radar_pc,
-                    #                         cam_cs_record=cam['cs_record'],
-                    #                         cam_pose_record=cam['pose_record'],
-                    #                         pointsensor_pose_record=radar_pose_record,
-                    #                         coordinates=frame['coordinates'])
-                    # radar_pc.points = radar_pc.points[:,mask]
                 
                 all_radar_pcs.points = np.hstack((all_radar_pcs.points, radar_pc.points))
 
@@ -280,8 +280,8 @@ class NuscenesDataset(NuScenes):
         
             cam_cs_record = frame['camera'][0]['cs_record']
             camera_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
-            lid_sd_record = self.get('sample_data', sample_record['data']['LIDAR_TOP'])
-            ref_pose_record = self.get('ego_pose', lid_sd_record['ego_pose_token'])
+            # lid_sd_record = self.get('sample_data', sample_record['data']['LIDAR_TOP'])
+            # ref_pose_record = self.get('ego_pose', lid_sd_record['ego_pose_token'])
             
             for i, box in enumerate(all_anns):
                 box_cam = copy.deepcopy(box)
@@ -366,8 +366,8 @@ class NuscenesDataset(NuScenes):
         
         ## Get boxes (boxes are in global coordinates)
         for ann in ann_records:
-            box = self.get_box(ann['token'])
-            box.name = self.cfg.CATEGORIES[box.name]
+            box = Box(ann['translation'], ann['size'], Quaternion(ann['rotation']),
+                      name=ann['category_name'], token=ann['token'])
 
             ## Filter based on distance to vehicle
             if self.cfg.MAX_BOX_DIST:
