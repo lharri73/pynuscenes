@@ -52,6 +52,7 @@ def render_sample_in_2d(sample, out_path=None):
                                             cam['pose_record'],
                                             sample['lidar']['pose_record'],
                                             coordinates=sample['coordinates'])
+            # lidar_pc_cam = lidar_pc
             render_pc_in_image(lidar_pc_cam, image, cam_intrinsic, ax=ax1[i], point_size=2)
         
         ## Plot Radar data
