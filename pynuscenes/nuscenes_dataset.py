@@ -128,9 +128,9 @@ class NuscenesDataset(NuScenes):
     ##--------------------------------------------------------------------------
     def _get_sample_frames(self, sample_record):
         """
-        Create frames from a single sample from the nuscenes dataset
+        Create frames from a single sample of the nuscenes dataset
         
-        :param sample_record (dict): sample record dictionary from nuscenes
+        :param sample_record (dict): sample record dictionary from nuscenes API
         :return frames (list): list of frame dictionaries
         """
         frame = {'coordinates': self.cfg.COORDINATES,
@@ -203,15 +203,17 @@ class NuscenesDataset(NuScenes):
         
         annotations = []
         for i, token in enumerate(ann_tokens):
-            this_ann = {}
             ann = self.get('sample_annotation', token)
+            this_ann = {}
             try:
                 this_ann['category'] = self.cfg.CATEGORIES[ann['category_name']]
             except:
                 continue
             this_ann['category_id'] = self.cfg.CAT_ID[this_ann['category']]
-            
-            ## Get boxes (boxes are in global coordinates)
+            this_ann['num_lidar_pts'] = ann['num_lidar_pts']
+            this_ann['num_radar_pts'] = ann['num_radar_pts']
+
+            ## Create Box object (boxes are in global coordinates)
             box = Box(ann['translation'], ann['size'], Quaternion(ann['rotation']),
                     name=this_ann['category'], token=ann['token'])
 
@@ -243,20 +245,19 @@ class NuscenesDataset(NuScenes):
         ## Get camera data
         if 'camera' in frame:
             for i, cam in enumerate(frame['camera']):
-                image = self._get_cam_data(cam['filename'])
+                image = self._get_camera_data(cam['filename'])
                 frame['camera'][i]['image'] = image
         
         ## Filter annotations
         if self.cfg.SAMPLE_MODE == 'one_cam' and self.cfg.FILTER_ANNS:
-            cs_record = frame['camera'][0]['cs_record']
-            pose_record = frame['camera'][0]['pose_record']
+            cam = frame['camera'][0]
+            cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
             filtered_anns = []
             for ann in frame['anns']:
-                box_veh = nsutils.global_to_vehicle(ann['box_3d'], pose_record)
-                box_cam = nsutils.vehicle_to_sensor(box_veh, cs_record)
-                if not box_in_image(box_cam, np.array(cs_record['camera_intrinsic']), (1600, 900)):
-                    continue
-                filtered_anns.append(ann)
+                box_veh = nsutils.global_to_vehicle(ann['box_3d'], cam['pose_record'])
+                box_cam = nsutils.vehicle_to_sensor(box_veh, cam['cs_record'])
+                if box_in_image(box_cam, cam_intrinsic, (cam['width'], cam['height'])):
+                    filtered_anns.append(ann)
             frame['anns'] = filtered_anns
         
         if frame['coordinates'] == 'vehicle':
@@ -322,17 +323,13 @@ class NuscenesDataset(NuScenes):
 
         return frame
     ##--------------------------------------------------------------------------
-    def _get_cam_data(self, filename):
+    def _get_camera_data(self, filename):
         """
-        Get camera sample data
+        Get camera image
 
-        :param cam_token (str): sample data token for this camera
-        :return image, intrinsics, pose_record, path:
+        :param filename (str): image file path
+        :return image (Image)
         """
-        # filename = self.get_sample_data_path(cam_token)
-        # cam_record = self.get('sample_data', cam_token)
-        # cs_record = self.get('calibrated_sensor', cam_record['calibrated_sensor_token'])
-        # pose_record = self.get('ego_pose', cam_record['ego_pose_token'])
         if os.path.exists(filename):
             with open(filename, 'rb') as f:
                 image_str = f.read()
