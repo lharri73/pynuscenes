@@ -39,7 +39,7 @@ class NuscenesDataset(NuScenes):
             'COORDINATES system not valid.'
         assert self.cfg.SPLIT in _C.NUSCENES_SPLITS[self.cfg.VERSION], \
             'SPLIT not valid.'
-        assert self.cfg.SAMPLE_MODE in ["all_cam", "one_cam"], \
+        assert self.cfg.SAMPLE_MODE in ["camera", "scene"], \
             'SAMPLE_MODE not valid.'
         
         super().__init__(version = self.cfg.VERSION,
@@ -143,12 +143,13 @@ class NuscenesDataset(NuScenes):
         ## Get sensor info
         for channel in self.cfg.SENSORS:
             sd_record = self.get('sample_data', sample_record['data'][channel])
-            cs_record = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
-            pose_record = self.get('ego_pose', sd_record['ego_pose_token'])
+            # cs_record = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
+            # pose_record = self.get('ego_pose', sd_record['ego_pose_token'])
             sample={'channel': channel,
-                    'cs_record': cs_record,
-                    'pose_record': pose_record,
-                    'token': sd_record['token'],
+                    # 'cs_record': cs_record,
+                    # 'pose_record': pose_record,
+                    'sd_record': sd_record,
+                    # 'token': sd_record['token'],
                     'filename': osp.join(self.dataroot, sd_record['filename']),
             }
             if 'CAM' in channel:
@@ -170,12 +171,9 @@ class NuscenesDataset(NuScenes):
 
         ## Get annotations
         frame['anns'] = sample_record['anns']
-        # anns, ref_pose_rec = self._get_anns(sample_record, self.cfg.ANN_REF_FRAME)
-        # frame['anns'] = anns
-        # frame['ref_pose_record'] = ref_pose_rec
 
         ## if 'one_cam' option is chosen, create as many frames as there are cameras
-        if 'camera' in frame and self.cfg.SAMPLE_MODE == "one_cam":
+        if 'camera' in frame and self.cfg.SAMPLE_MODE == "camera":
             for cam in frame['camera']:
                 temp_frame = copy.deepcopy(frame)
                 temp_frame['camera']=[cam]
@@ -199,10 +197,8 @@ class NuscenesDataset(NuScenes):
         ## TODO: add filtering based on num_radar/num_lidar points here
         ref_pose_record = None
         if cam is not None:
-            cam_token = cam['token']
-            ref_sd_record = self.get('sample_data', cam_token)
-            ref_cs_record = self.get('calibrated_sensor', ref_sd_record['calibrated_sensor_token'])
-            ref_pose_record = self.get('ego_pose', ref_sd_record['ego_pose_token'])
+            ref_cs_record = cam['cs_record']
+            ref_pose_record = cam['pose_record']
             cam_intrinsic = np.array(ref_cs_record['camera_intrinsic'])
 
         annotations = []
@@ -262,10 +258,13 @@ class NuscenesDataset(NuScenes):
         if 'camera' in frame:
             for i, cam in enumerate(frame['camera']):
                 image = self._get_camera_data(cam['filename'])
-                frame['camera'][i]['image'] = image
-            
+                sd_record = cam.pop('sd_record')
+                cam['image'] = image
+                cam['cs_record'] = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
+                cam['pose_record'] = self.get('ego_pose', sd_record['ego_pose_token'])
+        
         ## Load annotations
-        if self.cfg.SAMPLE_MODE == 'one_cam':
+        if self.cfg.SAMPLE_MODE == 'camera':
             anns, ref_pose_rec = self._get_anns(frame['anns'], frame['camera'][0])
         else:
             anns, ref_pose_rec = self._get_anns(frame['anns'])
@@ -274,15 +273,19 @@ class NuscenesDataset(NuScenes):
 
         ## Load LIDAR data
         if 'lidar' in frame:
+            lidar = frame['lidar']
+            sd_record = lidar.pop('sd_record')
+            lidar['cs_record'] = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
+            lidar['pose_record'] = self.get('ego_pose', sd_record['ego_pose_token'])
             lidar_pc = self._get_pointsensor_data('lidar',
                                                 sample_record,
-                                                frame['lidar']['channel'],
-                                                frame['lidar']['cs_record'],
-                                                frame['lidar']['pose_record'],
+                                                lidar['channel'],
+                                                lidar['cs_record'],
+                                                lidar['pose_record'],
                                                 nsweeps=self.cfg.LIDAR_SWEEPS)
             
             ## Filter points outside the image
-            if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "one_cam":
+            if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "camera":
                 cam = frame['camera'][0]
                 cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
                 lidar_pc_cam, _ = nsutils.map_pointcloud_to_camera(lidar_pc, 
@@ -300,6 +303,9 @@ class NuscenesDataset(NuScenes):
         if 'radar' in frame:
             all_radar_pcs = RadarPointCloud(np.zeros((18, 0)))
             for i, radar in enumerate(frame['radar']):
+                sd_record = radar.pop('sd_record')
+                radar['cs_record'] = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
+                radar['pose_record'] = self.get('ego_pose', sd_record['ego_pose_token'])
                 radar_pc = self._get_pointsensor_data('radar',
                                                 sample_record, 
                                                 radar['channel'], 
@@ -308,7 +314,7 @@ class NuscenesDataset(NuScenes):
                                                 nsweeps=self.cfg.RADAR_SWEEPS)
             
                 ## Filter points outside the image
-                if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "one_cam":
+                if self.cfg.FILTER_PC and self.cfg.SAMPLE_MODE == "camera":
                     cam = frame['camera'][0]
                     cam_intrinsic = np.array(cam['cs_record']['camera_intrinsic'])
                     radar_pc_cam, _ = nsutils.map_pointcloud_to_camera(radar_pc, 

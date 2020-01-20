@@ -4,9 +4,9 @@ SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                   # enable verbose mode
 
 ## DATLOADER ####################################################################
-SAMPLE_MODE: "one_cam"    # sample structure
-                          # "one_cam": sample contains one image from one camera
-                          # "all_cam" sample contains images from all cameras
+SAMPLE_MODE: "camera"    # sample structure
+                          # "camera": samples based on each camera's FOV
+                          # "scene" sample contains all sensors in one scene
 
 COORDINATES: "vehicle"       # coordinate system to return all data in
                             # "vehicle" or "global"
