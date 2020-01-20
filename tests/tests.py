@@ -91,32 +91,30 @@ def test_dataset_mapper(nusc):
     import time
     
     ## Test average sample loading time
-    total=0.0
-    for i in range(len(nusc)):
-        start = time.time()
-        sample = nusc[i]
-        end = time.time()
-        total += end - start
-    print('Average time: ', total/i)
+    # total=0.0
+    # for i in range(len(nusc)):
+    #     start = time.time()
+    #     sample = nusc[i]
+    #     end = time.time()
+    #     total += end - start
+    # print('Average time: ', total/i)
 
     ## Test data mapping correctness by visualization
-    # for i in range(len(nusc)):
-    #     sample = nusc[i]
-    #     print(len(sample['anns']))
+    for i in range(len(nusc)):
+        sample = nusc[i]
+        print(len(sample['anns']))
         
-    #     figure = nsvis.visualize_sample_2d(sample, 
-    #                                  coordinates=nusc.cfg.COORDINATES, 
-    #                                  out_path='1_camera_radar.jpg')
+        figure = nsvis.render_sample_in_2d(sample, out_path='1_camera_radar.jpg')
         
-    #     ## Render point cloud on image using nuscenes devkit API
-    #     nusc.render_pointcloud_in_image(sample['sample_token'],
-    #                                     pointsensor_channel = 'LIDAR_TOP',
-    #                                     camera_channel = sample['camera'][0]['channel'],
-    #                                     dot_size = 1)
-    #     # plt.show(block=False)
-    #     plt.savefig('0_camera_lidar.jpg')
+        ## Render point cloud on image using nuscenes devkit API
+        # nusc.render_pointcloud_in_image(sample['sample_token'],
+        #                                 pointsensor_channel = 'LIDAR_TOP',
+        #                                 camera_channel = sample['camera'][0]['channel'],
+        #                                 dot_size = 1)
+        # # plt.show(block=False)
+        # plt.savefig('0_camera_lidar.jpg')
 
-    #     input('here')
+        input('here')
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":
     nusc = NuscenesDataset(dataroot='../data/nuscenes',
