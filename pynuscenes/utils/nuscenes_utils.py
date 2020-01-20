@@ -51,11 +51,17 @@ def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
     :return points (nparray), depth, mask: Mapped and filtered points with depth and mask
     """
     pc = copy.deepcopy(pointcloud)
+
+    if isinstance(pc, LidarPointCloud) or isinstance(pc, RadarPointCloud):
+        points = pc.points[:3,:]
+    else:
+        points = pc
+
     (width, height) = img_shape
-    depths = pc.points[2, :]
+    depths = points[2, :]
     
     ## Take the actual picture
-    points = view_points(pc.points[:3, :], cam_intrinsic, normalize=True)
+    points = view_points(points[:3, :], cam_intrinsic, normalize=True)
 
     ## Remove points that are either outside or behind the camera. 
     mask = np.ones(depths.shape[0], dtype=bool)
@@ -79,7 +85,7 @@ def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record,
     :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera
     :param ref_pose_record (dict): reference pose record used for transforming 
         anns from global to vehicle coordinate system
-    :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 
+    :param coordinates (str): current point cloud coordinates ('vehicle', 'global') 
     :return ann (Box): Mapped annotation box
     """
     ann = copy.deepcopy(annotation)
@@ -201,42 +207,6 @@ def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
 #         raise Exception("mode of '{}' is not supported".format(mode))
 
 #     return bbox
-##------------------------------------------------------------------------------
-def points_in_image(pointcloud, cam_cs_record, img_shape=(1600,900)):
-    """
-    Filter points in the point cloud that are visible inside an image (not 
-    accounting for occlusions)
-
-    :param points: point cloud in the coordinate system of the camera
-    :param cam_cs_record: calibrated sensor record of the camera
-    :param img_shape: shape of the image (width, height)
-    """
-    width, height = img_shape
-    
-    if isinstance(pointcloud, LidarPointCloud) or isinstance(pointcloud, RadarPointCloud):
-        points = pointcloud.points[:3,:]
-    else:
-        points = pointcloud
-    
-    ## Grab the depths (camera frame z axis points away from the camera).
-    depths = points[2, :]
-    
-    ## Take the actual picture
-    cam_intrinsics = np.array(cam_cs_record['camera_intrinsic'])
-    points = view_points(points[:3, :], cam_intrinsics, normalize=True)
-
-    ## Remove points that are either outside or behind the camera. 
-    mask = np.ones(depths.shape[0], dtype=bool)
-    mask = np.logical_and(mask, depths > 0)
-    mask = np.logical_and(mask, points[0, :] > 1)
-    mask = np.logical_and(mask, points[0, :] < width - 1)
-    mask = np.logical_and(mask, points[1, :] > 1)
-    mask = np.logical_and(mask, points[1, :] < height - 1)
-    
-    points = points[:, mask]
-    depths = depths[mask]
-    
-    return mask
 ##------------------------------------------------------------------------------
 def boxes_in_image(boxes, cam_cs_record, img_shape=(1600,900)):
     """

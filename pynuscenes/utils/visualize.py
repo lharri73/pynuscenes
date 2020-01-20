@@ -58,7 +58,6 @@ def render_sample_in_2d(sample, out_path=None):
         if 'radar' in sample:
             radar_pc = sample['radar']['pointcloud']
             render_pc_in_bev(radar_pc, ax=ax2, point_size=10, x_lim=x_lim, y_lim=y_lim)
-
             radar_pc_cam, depth = nsutils.map_pointcloud_to_camera(
                                             radar_pc,
                                             cam['cs_record'],
@@ -68,7 +67,8 @@ def render_sample_in_2d(sample, out_path=None):
             render_pc_in_image(radar_pc_cam, image, cam_intrinsic, ax=ax1[i], point_size=10)
             
         ## Plot annotations on image
-        for box in sample['anns']:
+        for ann in sample['anns']:
+            box = ann['box_3d']
             render_3dbox_in_bev([box], ax2, x_lim=x_lim, y_lim=y_lim)
             box = nsutils.map_annotation_to_camera(box, 
                                 cam_cs_record = cam['cs_record'],

@@ -43,6 +43,8 @@ frame = {
     'camera': [{            # A list of camera frame dictionaries (One for each camera)
         token: str,         # Camera sensor record token
         filename: str,      # Image filename, relative to nuscenes root dir
+        sc_record: dict,     # Camera sensor calibration parameters
+        pose_record: dict,   # Vehicle pose record for the timestamp of the camera
         channel: str,       # Camera channel (e.g. CAM_FRONT_RIGHT)
         width: int,         # Image width
         height: int,        # Image height
@@ -53,11 +55,15 @@ frame = {
         token: str,         # LIDAR sensor record token
         filename: str,      # Pointcloud filename, relative to nuscenes root dir
         channel: str,       # LIDAR channel (always LIDAR_TOP)
+        sc_record: dict,     # LIDAR sensor calibration parameters
+        pose_record: dict,   # Vehicle pose record for the timestamp of the LIDAR
         }
     'radar': [{             # A list of Radar frame dictionaries (one for each Radar)
         token: str,         # Radar sensor record token
         filename: str,      # Pointcloud filename, relative to nuscenes root dir
         channel: str,       # Radar channel (always RADAR_BACK_LEFT)
+        sc_record: dict,     # Radar sensor calibration parameters
+        pose_record: dict,   # Vehicle pose record for the timestamp of the Radar
         }, ...
     ],
     'anns': [{},...]        # All annotations records for this sample
