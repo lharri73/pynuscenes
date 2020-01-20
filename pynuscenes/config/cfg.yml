@@ -4,16 +4,13 @@ SPLIT: "mini_val"               # nuscenes dataset split
 VERBOSE: True                   # enable verbose mode
 
 ## DATLOADER ####################################################################
-SAMPLE_MODE: "one_cam"    # sample structure
-                          # "one_cam": sample contains one image from one camera
-                          # "all_cam" sample contains images from all cameras
+SAMPLE_MODE: "camera"    # "camera": samples based on each camera's FOV
+                         #    this mode only includes point cloud and annotations 
+                         #    that are visible inside the image
+                         # "scene" sample contains all sensors in one scene.
+                         # Both modes return data in vehicle's coordinate system
 
-COORDINATES: "vehicle"       # coordinate system to return all data in
-                            # "vehicle" or "global"
-ANN_REF_FRAME: "LIDAR_TOP"  # Annotation reference frame for vehicle pose
-
-FILTER_PC: True           # include only points inside the image ("one_cam" mode only)
-FILTER_ANNS: True         # include only annotations inside the image ("one_cam" mode only)
+REF_POSE_CHANNEL: "LIDAR_TOP"  # reference vehicle pose for "scene" sample mode
 
 LIDAR_SWEEPS: 1           # number of LIDAR sweeps
 RADAR_SWEEPS: 1           # number of Radar sweeps
