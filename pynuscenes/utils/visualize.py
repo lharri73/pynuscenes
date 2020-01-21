@@ -77,6 +77,8 @@ def render_sample_in_2d(sample, out_path=None):
                                 ref_pose_record = sample['ref_pose_record'],
                                 coordinates = sample['coordinates'])
             render_3dbox_in_image(box, image, cam_intrinsic, ax1[i])
+            if 'box_2d' in ann:
+                draw_xywh_bbox(image, ann['box_2d'], ax1[i])
 
     ## Display and save the figures
     if out_path is not None:
@@ -368,6 +370,30 @@ def render_2dbox_in_image(bbox, image, out_dir=None, img_id=None):
             out_file = os.path.join(out_dir, str(img_id)+'_'+str(i)+'.jpg')
             cv2.imwrite(out_file, img)
             continue
+##------------------------------------------------------------------------------
+def draw_xywh_bbox(img, box, ax, color=(0,255,0), lineWidth=3, format='BGR'):
+    
+    import matplotlib.patches as patches
+    rect = patches.Rectangle((box[0],box[1]),box[2],box[3],linewidth=lineWidth,
+                                edgecolor='g', facecolor='none')
+    ax.add_patch(rect)
+
+    # assert format in ['RGB', 'BGR'], "Format must be either 'BGR' or 'RGB'."
+    
+    # img = copy.deepcopy(img)
+    # img = np.asarray(img)
+    # if format == 'RGB':
+    #     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # box = [int(elem) for elem in box]
+    # cv2.rectangle(img,(box[0],box[1]), (box[0]+box[2], box[1]+box[3]),
+    #                 color,lineWidth)
+
+    # if format == 'RGB':
+    #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # cv2.imwrite('2d_box.jpg', img)
+    # return img
 ##------------------------------------------------------------------------------
 def arrange_images_PIL(image_list: list, 
                        im_size: tuple=(640,360),

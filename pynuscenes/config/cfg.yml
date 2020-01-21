@@ -11,7 +11,7 @@ SAMPLE_MODE: "camera"    # "camera": samples based on each camera's FOV
                          # Both modes return data in vehicle's coordinate system
 
 REF_POSE_CHANNEL: "LIDAR_TOP"  # reference vehicle pose for "scene" sample mode
-
+GEN_2D_BBOX: True         # generate 2D bboxes from 3D annotations
 LIDAR_SWEEPS: 1           # number of LIDAR sweeps
 RADAR_SWEEPS: 1           # number of Radar sweeps
 BOX_VELOCITY: False       # calculate velocity for each annotation

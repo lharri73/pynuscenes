@@ -125,7 +125,7 @@ def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
         # Project corners that are in front of the camera to 2d to get bbox in pixel coords.
         imcorners = view_points(corners, view, normalize=True)[:2]
         bbox = (np.min(imcorners[0]), np.min(imcorners[1]), np.max(imcorners[0]), np.max(imcorners[1]))
-
+    
         # Crop bbox to prevent it extending outside image.
         bbox_crop = tuple(max(0, b) for b in bbox)
         bbox_crop = (min(imsize[0], bbox_crop[0]),
@@ -141,7 +141,7 @@ def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
             bbox_crop = [bbox_crop[0], bbox_crop[1], 
                          abs(bbox_crop[2]-bbox_crop[0]), 
                          abs(bbox_crop[3]-bbox_crop[1])]
-        return bbox_crop
+        return np.around(bbox_crop, 2)
 ##------------------------------------------------------------------------------
 # def box_3d_to_2d(box, view, imsize, mode='xywh'):
 #     """ # TODO: currently not working properly

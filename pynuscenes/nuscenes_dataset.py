@@ -272,6 +272,10 @@ class NuscenesDataset(NuScenes):
                 cam_intrinsic = np.array(cam_cs_record['camera_intrinsic'])
                 if not box_in_image(box_cam, cam_intrinsic, (1600, 900)):
                     continue
+                if self.cfg.GEN_2D_BBOX:
+                    ann['box_2d'] = nsutils.box_3d_to_2d_simple(box_cam, 
+                                                                cam_intrinsic, 
+                                                                (1600, 900))
                 filtered_anns.append(ann)
             frame['anns'] = filtered_anns
 
