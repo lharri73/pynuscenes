@@ -246,6 +246,9 @@ class NuscenesDataset(NuScenes):
             filename = osp.join(self.dataroot, sd_record['filename'])
             image = self._get_camera_data(filename)
             cam['image'] = image
+            cam['height'] = sd_record['height']
+            cam['width'] = sd_record['width']
+            cam['filename'] = filename
             cam['cs_record'] = self.get('calibrated_sensor', sd_record['calibrated_sensor_token'])
             cam['pose_record'] = self.get('ego_pose', sd_record['ego_pose_token'])
         
