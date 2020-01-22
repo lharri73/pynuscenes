@@ -168,6 +168,8 @@ def render_pc_in_bev(pc, ax=None, point_size=1, x_lim=(-20, 20), y_lim=(-20, 20)
 
     points = view_points(pc[:3, :], view, normalize=False)
     ax.scatter(points[0, :], points[1, :], c=pc[2, :], s=point_size)
+    # Show ego vehicle.
+    ax.plot(0, 0, 'x', color='red')
     ax.set_xlim(x_lim[0], x_lim[1])
     ax.set_ylim(y_lim[0], y_lim[1])
     return ax
