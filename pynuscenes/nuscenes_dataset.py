@@ -351,44 +351,6 @@ class NuscenesDataset(NuScenes):
             raise Exception('Camera image not found at {}'.format(filename))
         image = np.array(Image.open(io.BytesIO(image_str)))
         return image
-    ##--------------------------------------------------------------------------
-    def _get_pointsensor_data(self, sensor_type, sample_record, channel, 
-                              cs_record, pose_record, nsweeps=1):
-        """
-        Returns the LIDAR pointcloud for this frame in vehicle/global coordniates
-        
-        :param sensor_type (str): 'radar' or 'lidar'
-        :param sample_record: sample record dictionary from nuscenes
-        :param channel: sensor channel
-        :param nsweeps: number of previous sweeps to include
-        :return pc, cs_record, pose_record: Point cloud and other sensor parameters
-        """
-        
-        ## Read data from file (in sensor's coordinates)
-        if sensor_type == 'lidar':
-            pc, _ = LidarPointCloud.from_file_multisweep(self,
-                                                        sample_record, 
-                                                        channel, 
-                                                        channel, 
-                                                        nsweeps=nsweeps,
-                                                        min_distance=self.cfg.PC_MIN_DIST)
-        elif sensor_type == 'radar':
-            pc, _ = RadarPointCloud.from_file_multisweep(self,
-                                                        sample_record, 
-                                                        channel, 
-                                                        channel, 
-                                                        nsweeps=nsweeps,
-                                                        min_distance=self.cfg.PC_MIN_DIST)
-        else:
-            raise Exception('Sensor type not valid.')
-        
-        ## Take point clouds from sensor to vehicle coordinates
-        pc = nsutils.sensor_to_vehicle(pc, cs_record)       
-        # if self.cfg.COORDINATES == 'global':
-        #     ## Take point clouds from vehicle to global coordinates
-        #     pc = nsutils.vehicle_to_global(pc, pose_record)
-        
-        return pc
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":
     nusc_ds = NuscenesDataset(cfg='config/cfg.yml')
