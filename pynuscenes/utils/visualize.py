@@ -373,12 +373,16 @@ def render_2dbox_in_image(bbox, image, out_dir=None, img_id=None):
             cv2.imwrite(out_file, img)
             continue
 ##------------------------------------------------------------------------------
-def draw_xywh_bbox(img, box, ax, color=(0,255,0), lineWidth=3, format='BGR'):
+def draw_xywh_bbox(box, ax=None, color=(0,255,0), lineWidth=3, format='BGR'):
     
     import matplotlib.patches as patches
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(16, 9))
+        
     rect = patches.Rectangle((box[0],box[1]),box[2],box[3],linewidth=lineWidth,
                                 edgecolor='g', facecolor='none')
     ax.add_patch(rect)
+    return ax
 
     # assert format in ['RGB', 'BGR'], "Format must be either 'BGR' or 'RGB'."
     

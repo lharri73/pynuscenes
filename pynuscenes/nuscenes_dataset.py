@@ -1,33 +1,34 @@
 import io
 import os
-import cv2
 import time
 import copy
 import pickle
+from easydict import EasyDict
 import numpy as np
 from PIL import Image
 import os.path as osp
-from pprint import pprint
 from tqdm import tqdm as tqdm
 from nuscenes.nuscenes import NuScenes
-from nuscenes.utils.geometry_utils import view_points, box_in_image
+from nuscenes.utils.geometry_utils import box_in_image
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud
 
 import pynuscenes.utils.nuscenes_utils as nsutils
 from pyquaternion import Quaternion
 from pynuscenes.utils import constants as _C
-from pynuscenes.utils import log, io_utils
+from pynuscenes.utils.io_utils import yaml_load
+from pynuscenes.utils import log
 
 
 class NuscenesDataset(NuScenes):
     """
     An improved database and dataloader class for nuScenes.
     """
-    def __init__(self, dataroot, cfg):
+    def __init__(self, dataroot, cfg, generate_db=True):
         """
         :param cfg (str): path to the config file
         """
-        self.cfg = io_utils.yaml_load(cfg, safe_load=True)
+        self.cfg = cfg if isinstance(cfg, EasyDict) else yaml_load(cfg, safe_load=True)
+    
         ## Sanity checks
         assert self.cfg.SPLIT in _C.NUSCENES_SPLITS[self.cfg.VERSION], \
             'SPLIT not valid.'
@@ -47,7 +48,8 @@ class NuscenesDataset(NuScenes):
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.dataroot,
                          verbose = self.cfg.VERBOSE)
-        self.db = self.generate_db()
+        if generate_db:
+            self.db = self.generate_db()
     ##--------------------------------------------------------------------------
     def __getitem__(self, idx):
         """
