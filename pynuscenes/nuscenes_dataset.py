@@ -246,7 +246,7 @@ class NuscenesDataset(NuScenes):
         for cam in cams:
             sd_record = self.get('sample_data', cam['token'])
             filename = osp.join(self.dataroot, sd_record['filename'])
-            image = self._get_camera_data(filename)
+            image = self.get_camera_data(filename)
             cam['image'] = image
             cam['height'] = sd_record['height']
             cam['width'] = sd_record['width']
@@ -342,7 +342,8 @@ class NuscenesDataset(NuScenes):
 
         return frame
     ##--------------------------------------------------------------------------
-    def _get_camera_data(self, filename):
+    @staticmethod
+    def get_camera_data(filename):
         """
         Get camera image
 
