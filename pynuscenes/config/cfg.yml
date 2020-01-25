@@ -1,8 +1,3 @@
-## NUSCENES DATASET ############################################################
-VERSION: "v1.0-mini"            # nuscenes dataset version
-SPLIT: "mini_val"               # nuscenes dataset split
-VERBOSE: True                   # enable verbose mode
-
 ## DATLOADER ####################################################################
 SAMPLE_MODE: "camera"    # "camera": samples based on each camera's FOV
                          #    this mode only includes point cloud and annotations 
@@ -17,6 +12,7 @@ RADAR_SWEEPS: 1           # number of Radar sweeps
 BOX_VELOCITY: False       # calculate velocity for each annotation
 MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
                           # (0 for no limit on distance)
+ANN_VIS_LEVELS: ['2', '3', '4']   ## annotation visibility levels
 
 ## sensors to include in the databse. All sensors not in this list are ignored.
 SENSORS: [
@@ -68,6 +64,7 @@ CAT_ID: {
 }
 
 ## MISC ########################################################################
+VERBOSE: True                     # enable verbose mode
 IMG_ID_LEN: 8                     # length of string image ID
 PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
 CONSOLE_LOG_LEVEL: "INFO"         # logging level for console

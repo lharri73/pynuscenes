@@ -23,14 +23,14 @@ class NuscenesDataset(NuScenes):
     """
     An improved database and dataloader class for nuScenes.
     """
-    def __init__(self, dataroot, cfg, generate_db=True):
+    def __init__(self, dataroot, version, split, cfg, generate_db=True):
         """
         :param cfg (str): path to the config file
         """
         self.cfg = cfg if isinstance(cfg, EasyDict) else yaml_load(cfg, safe_load=True)
     
         ## Sanity checks
-        assert self.cfg.SPLIT in _C.NUSCENES_SPLITS[self.cfg.VERSION], \
+        assert split in _C.NUSCENES_SPLITS[version], \
             'SPLIT not valid.'
         assert self.cfg.SAMPLE_MODE in ["camera", "scene"], \
             'SAMPLE_MODE not valid.'
@@ -44,6 +44,8 @@ class NuscenesDataset(NuScenes):
         self.image_id = 0
         self.cfg.COORDINATES = 'vehicle'
         self.logger.info('Loading NuScenes')
+        self.cfg.VERSION = version
+        self.cfg.SPLIT = split
         
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.dataroot,
