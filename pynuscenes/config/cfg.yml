@@ -51,16 +51,16 @@ CATEGORIES: {
 
 ## Category IDs
 CAT_ID: {
-  'car': 1, 
-  'truck': 2, 
-  'trailer': 3, 
-  'pedestrian': 4, 
-  'bus': 5,
-  'bicycle': 6,
-  'motorcycle': 7, 
-  'construction_vehicle': 8, 
-  # 'traffic_cone': 9,
-  # 'barrier': 10
+  'car': 0, 
+  'truck': 1, 
+  'trailer': 2, 
+  'pedestrian': 3, 
+  'bus': 4,
+  'bicycle': 5,
+  'motorcycle': 6, 
+  'construction_vehicle': 7, 
+  # 'traffic_cone': 8,
+  # 'barrier': 9
 }
 
 ## MISC ########################################################################
