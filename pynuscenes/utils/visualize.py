@@ -87,13 +87,14 @@ def render_sample_in_2d(sample, out_path=None):
     
     return figure1
 ##------------------------------------------------------------------------------
-def render_sample_in_3d(sample, coordinates, fig=None):
+def render_sample_in_3d(sample, coordinates, fig=None, show=False):
     """
     Visualize sample data from all sensors in 3D using mayavi
     
     :param sample [dict]: sample dictionary returned from nuscenes_db
     :param coordinates [str]: sample data coordinate system: 'vehicle' or 'global'
     :fig: An mayavi mlab figure object to display the 3D pointclouds on
+    :show: If Ture, open an mayavi window and display. If False, just return figure
     """
     import mayavi.mlab as mlab
 
@@ -104,21 +105,28 @@ def render_sample_in_3d(sample, coordinates, fig=None):
     mlab.clf(figure=fig)
     
     ## Draw LIDAR
-    render_pc_in_3d(sample['lidar'][0]['pointcloud'].points.T, 
+    render_pc_in_3d(sample['lidar']['pointcloud'].points.T, 
                        fig=fig, 
                        pts_size=3,
-                       scalar=sample['lidar'][0]['pointcloud'].points.T[:,2])
+                       pts_color=(0.5,0.5,0.5),
+                    #    scalar=sample['lidar']['pointcloud'].points.T[:,2],
+                       )
     ## Draw Radar
-    render_pc_in_3d(sample['radar'][0]['pointcloud'].points.T, 
+    render_pc_in_3d(sample['radar']['pointcloud'].points.T, 
                        fig=fig, 
                        pts_color=(1,0,0), 
                        pts_mode='sphere', 
                        pts_size=.5)
 
     ## Draw 3D annotation boxes
-    render_3dbox_in_3d(sample['anns'], fig)
+    boxes = [s['box_3d'] for s in sample['anns']]
+    render_3dbox_in_3d(boxes, fig)
 
-    mlab.show(1)
+    # mlab.view(azimuth=180, elevation=65, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
+
+    if show:
+        mlab.show(1)
+
     return fig
 
 ##------------------------------------------------------------------------------
@@ -223,7 +231,7 @@ def render_3dbox_in_bev(boxes, ax=None, x_lim=(-20, 20), y_lim=(-20, 20)):
     return ax
 ##------------------------------------------------------------------------------
 def render_pc_in_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4, 
-            pts_mode='point', pts_color=None):
+            pts_mode='point', pts_color=None, show_origin=False):
     """ 
     Draw lidar points
     :param pc (nparray): numpy array (n,3) of XYZ
@@ -250,12 +258,13 @@ def render_pc_in_3d(pc, scalar=None, fig=None, bgcolor=(0,0,0), pts_size=4,
         mlab.points3d(pc[:,0], pc[:,1], pc[:,2], color=pts_color, mode=pts_mode,
                       colormap = 'gnuplot', scale_factor=pts_size, figure=fig)
     
-    # draw origin
-    mlab.points3d(0, 0, 0, color=(1, 1, 1), mode='sphere', scale_factor=0.6, figure=fig)
+    ## draw origin
+    if show_origin:
+        mlab.points3d(0, 0, 0, color=(0.0, 0.0, 0.8), mode='sphere', scale_factor=3, figure=fig)    
     
     return fig
 ##------------------------------------------------------------------------------
-def render_3dbox_in_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
+def render_3dbox_in_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False, show_origin=False):
     """ 
     Draw lidar points
     :parma boxes ([Box]): list of Box objects
@@ -277,8 +286,10 @@ def render_3dbox_in_3d(boxes, fig=None, bgcolor=(0,0,0), show_names=False):
     corner_list = np.swapaxes(np.array(corner_list),1,2)
     draw_boxes_by_corner_3d(corner_list, box_names, fig=fig, draw_text=show_names, 
                             color=(0,0.85,0.1), line_width=3)
-    # draw origin
-    mlab.points3d(0, 0, 0, color=(0.0, 0.0, 0.8), mode='sphere', scale_factor=3, figure=fig)
+    
+    ## draw origin
+    if show_origin:
+        mlab.points3d(0, 0, 0, color=(0.0, 0.0, 0.8), mode='sphere', scale_factor=3, figure=fig)
     
     return fig
 ##------------------------------------------------------------------------------

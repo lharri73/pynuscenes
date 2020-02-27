@@ -1,5 +1,5 @@
 ## DATLOADER ####################################################################
-SAMPLE_MODE: "camera"    # "camera": samples based on each camera's FOV
+SAMPLE_MODE: "scene"    # "camera": samples based on each camera's FOV
                          #    this mode only includes point cloud and annotations 
                          #    that are visible inside the image
                          # "scene" sample contains all sensors in one scene.

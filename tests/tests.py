@@ -2,7 +2,7 @@ import context
 from tqdm import tqdm
 import numpy as np
 import matplotlib
-# matplotlib.use("Agg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pynuscenes.utils.visualize as nsvis
 from pynuscenes.utils.io_utils import save_fig
@@ -22,25 +22,24 @@ def test_visualization(nusc):
         ## Render point cloud on image using nuscenes devkit API
         nusc.render_pointcloud_in_image(sample['sample_token'],
                                         pointsensor_channel = 'RADAR_FRONT',
-                                        camera_channel = 'CAM_FRONT_LEFT',
+                                        camera_channel = 'CAM_FRONT',
                                         dot_size = 8)
         # plt.show(block=False)
         plt.savefig('0_camera_radar.jpg')
 
         ## Render one sensor using nuscenes devkit API
-        sample_data_token = sample['camera'][0]['token']
+        sample_data_token = sample['camera'][2]['token']
         nusc.render_sample_data(sample_data_token)
         # plt.show(block=False)
         plt.savefig('0_camera.jpg')
 
         ## Render sample using nuscenes_dataset API in 3D
-        # nsvis.render_sample_in_3d(sample, 
-        #                     coordinates=nusc.cfg.COORDINATES)
-        # input('press enter to continue')
+        nsvis.render_sample_in_3d(sample, 
+                            coordinates=nusc.cfg.COORDINATES)
         
         # plt.show(block=False)
         input('press enter to continue')
-        plt.close(fig=figure)
+        plt.close()
 ##------------------------------------------------------------------------------
 def test_new_viz(nusc):
     
@@ -117,13 +116,13 @@ def test_dataset_mapper(nusc):
         input('here')
 ##------------------------------------------------------------------------------
 if __name__ == "__main__":
-    nusc = NuscenesDataset(dataroot='../data/nuscenes',
+    nusc = NuscenesDataset(dataroot='../../datasets/nuscenes_mini',
                            version="v1.0-mini",
-                           split='mini_train',
-                           cfg='../pynuscenes/config/cfg.yml')
+                           split='mini_val',
+                           cfg='pynuscenes/config/cfg.yml')
     
-    # test_visualization(nusc)
+    test_visualization(nusc)
     # test_points_in_image(nusc)
     # test_database(nusc)
-    test_dataset_mapper(nusc)
+    # test_dataset_mapper(nusc)
     # test_new_viz(nusc)
