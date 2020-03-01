@@ -50,6 +50,7 @@ class NuscenesDataset(NuScenes):
         super().__init__(version = self.cfg.VERSION,
                          dataroot = self.dataroot,
                          verbose = self.cfg.VERBOSE)
+        self.db = {}
         if generate_db:
             self.db = self.generate_db()
     ##--------------------------------------------------------------------------
