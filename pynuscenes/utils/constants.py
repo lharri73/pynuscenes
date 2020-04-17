@@ -25,6 +25,15 @@ RADARS = {'RADAR_FRONT_LEFT':  0,
 
 LIDARS = {'LIDAR_TOP':  0}
 
+RADAR_FOR_CAMERA = {
+        'CAM_FRONT_LEFT':  ["RADAR_FRONT_LEFT", "RADAR_FRONT"],
+        'CAM_FRONT_RIGHT': ["RADAR_FRONT_RIGHT", "RADAR_FRONT"],
+        'CAM_FRONT':       ["RADAR_FRONT_RIGHT", "RADAR_FRONT_LEFT", "RADAR_FRONT"],
+        'CAM_BACK_LEFT':   ["RADAR_BACK_LEFT", "RADAR_FRONT_LEFT"],
+        'CAM_BACK_RIGHT':  ["RADAR_BACK_RIGHT", "RADAR_FRONT_RIGHT"],
+        'CAM_BACK':        ["RADAR_BACK_RIGHT","RADAR_BACK_LEFT"],
+        }
+
 NAMEMAPPING = {
         'movable_object.barrier': 'barrier',
         'vehicle.bicycle': 'bicycle',

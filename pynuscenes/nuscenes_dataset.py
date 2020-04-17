@@ -178,8 +178,15 @@ class NuscenesDataset(NuScenes):
                 temp_frame = copy.deepcopy(frame)
                 temp_frame['camera']=[cam]
                 temp_frame['id'] = self.frame_id
+
+                if self.cfg.FILTER_RADARS:
+                    ## Filter Radars based on camera view
+                    temp_frame['radar'] = [x for x in temp_frame['radar'] if 
+                        x['channel'] in _C.RADAR_FOR_CAMERA[cam['channel']]]
+                
                 all_frames.append(temp_frame)
                 self.frame_id += 1
+            
         else:
             ## for 'scene' sample option, create one frame for all sensors
             frame['id'] = self.frame_id

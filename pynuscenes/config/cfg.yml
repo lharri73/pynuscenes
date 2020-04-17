@@ -13,6 +13,7 @@ BOX_VELOCITY: False       # calculate velocity for each annotation
 MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
                           # (0 for no limit on distance)
 ANN_VIS_LEVELS: ['2', '3', '4']   ## annotation visibility levels
+FILTER_RADARS: True       # Filter Radars based on camera view
 
 ## sensors to include in the databse. All sensors not in this list are ignored.
 SENSORS: [
