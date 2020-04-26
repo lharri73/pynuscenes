@@ -157,7 +157,7 @@ def render_pc_in_image(pc, image, camera_intrinsic, ax=None, point_size=1, edge_
     
     return ax
 ##------------------------------------------------------------------------------
-def render_pc_in_bev(pc, ax=None, point_size=1, x_lim=(-20, 20), y_lim=(-20, 20)):
+def render_pc_in_bev(pc, ax=None, point_size=1, color='k', x_lim=(-20, 20), y_lim=(-20, 20)):
     """
     Render point clouds in Birds Eye View (BEV).
     pc can be in vehicle or point sensor coordinate system.
@@ -169,13 +169,14 @@ def render_pc_in_bev(pc, ax=None, point_size=1, x_lim=(-20, 20), y_lim=(-20, 20)
     :param x_lim (int, int): x (min, max) range for plotting
     :param y_lim (int, int): y (min, max) range for plotting
     """
-    pc = pc.points
+
     view = np.eye(4)    # bev view
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(9, 9))
 
     points = view_points(pc[:3, :], view, normalize=False)
-    ax.scatter(points[0, :], points[1, :], c=pc[2, :], s=point_size)
+    ax.scatter(points[0, :], points[1, :], c=color, s=point_size)
+    
     # Show ego vehicle.
     ax.plot(0, 0, 'x', color='red')
     ax.set_xlim(x_lim[0], x_lim[1])
