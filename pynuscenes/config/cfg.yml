@@ -1,73 +1,74 @@
-## DATLOADER ####################################################################
-SAMPLE_MODE: "scene"    # "camera": samples based on each camera's FOV
-                         #    this mode only includes point cloud and annotations 
-                         #    that are visible inside the image
-                         # "scene" sample contains all sensors in one scene.
-                         # Both modes return data in vehicle's coordinate system
+NUSCENES:
+  ## DATLOADER ####################################################################
+  SAMPLE_MODE: "scene"    # "camera": samples based on each camera's FOV
+                          #    this mode only includes point cloud and annotations 
+                          #    that are visible inside the image
+                          # "scene" sample contains all sensors in one scene.
+                          # Both modes return data in vehicle's coordinate system
 
-REF_POSE_CHANNEL: "LIDAR_TOP"  # reference vehicle pose for "scene" sample mode
-GEN_2D_BBOX: True         # generate 2D bboxes from 3D annotations
-LIDAR_SWEEPS: 1           # number of LIDAR sweeps
-RADAR_SWEEPS: 1           # number of Radar sweeps
-BOX_VELOCITY: False       # calculate velocity for each annotation
-MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
-                          # (0 for no limit on distance)
-ANN_VIS_LEVELS: ['2', '3', '4']   ## annotation visibility levels
-FILTER_RADARS: True       # Filter Radars based on camera view
+  REF_POSE_CHANNEL: "LIDAR_TOP"  # reference vehicle pose for "scene" sample mode
+  GEN_2D_BBOX: True         # generate 2D bboxes from 3D annotations
+  LIDAR_SWEEPS: 1           # number of LIDAR sweeps
+  RADAR_SWEEPS: 1           # number of Radar sweeps
+  BOX_VELOCITY: False       # calculate velocity for each annotation
+  MAX_BOX_DIST: 0           # Maximum box distance in m to include in annotations 
+                            # (0 for no limit on distance)
+  ANN_VIS_LEVELS: ['2', '3', '4']   ## annotation visibility levels
+  FILTER_RADARS: True       # Filter Radars based on camera view
 
-## sensors to include in the databse. All sensors not in this list are ignored.
-SENSORS: [
-  "CAM_FRONT_LEFT",
-  "CAM_FRONT_RIGHT",
-  "CAM_FRONT",
-  "CAM_BACK_LEFT",
-  "CAM_BACK_RIGHT",
-  "CAM_BACK",
-  "RADAR_FRONT_LEFT",
-  "RADAR_FRONT_RIGHT",
-  "RADAR_FRONT",
-  "RADAR_BACK_LEFT",
-  "RADAR_BACK_RIGHT",
-  "LIDAR_TOP",
-]
+  ## sensors to include in the databse. All sensors not in this list are ignored.
+  SENSORS: [
+    "CAM_FRONT_LEFT",
+    "CAM_FRONT_RIGHT",
+    "CAM_FRONT",
+    "CAM_BACK_LEFT",
+    "CAM_BACK_RIGHT",
+    "CAM_BACK",
+    "RADAR_FRONT_LEFT",
+    "RADAR_FRONT_RIGHT",
+    "RADAR_FRONT",
+    "RADAR_BACK_LEFT",
+    "RADAR_BACK_RIGHT",
+    "LIDAR_TOP",
+  ]
 
-## categories to include in database and their corresponding name mapping.
-## Any category not in this dictionary is ignored.
-CATEGORIES: {
-  'vehicle.car':                          'car',
-  'vehicle.truck':                        'truck',
-  'vehicle.trailer':                      'trailer',
-  'human.pedestrian.adult':               'pedestrian',
-  'human.pedestrian.child':               'pedestrian',
-  'human.pedestrian.construction_worker': 'pedestrian',
-  'human.pedestrian.police_officer':      'pedestrian',
-  'vehicle.bus.bendy':                    'bus',
-  'vehicle.bus.rigid':                    'bus',
-  'vehicle.bicycle':                      'bicycle',
-  'vehicle.motorcycle':                   'motorcycle',
-  'vehicle.construction':                 'construction_vehicle',
-  # 'movable_object.trafficcone':           'traffic_cone',
-  # 'movable_object.barrier':               'barrier',
-}
+  ## categories to include in database and their corresponding name mapping.
+  ## Any category not in this dictionary is ignored.
+  CATEGORIES: {
+    'vehicle.car':                          'car',
+    'vehicle.truck':                        'truck',
+    'vehicle.trailer':                      'trailer',
+    'human.pedestrian.adult':               'pedestrian',
+    'human.pedestrian.child':               'pedestrian',
+    'human.pedestrian.construction_worker': 'pedestrian',
+    'human.pedestrian.police_officer':      'pedestrian',
+    'vehicle.bus.bendy':                    'bus',
+    'vehicle.bus.rigid':                    'bus',
+    'vehicle.bicycle':                      'bicycle',
+    'vehicle.motorcycle':                   'motorcycle',
+    'vehicle.construction':                 'construction_vehicle',
+    # 'movable_object.trafficcone':           'traffic_cone',
+    # 'movable_object.barrier':               'barrier',
+  }
 
-## Category IDs
-CAT_ID: {
-  'car': 0, 
-  'truck': 1, 
-  'trailer': 2, 
-  'pedestrian': 3, 
-  'bus': 4,
-  'bicycle': 5,
-  'motorcycle': 6, 
-  'construction_vehicle': 7, 
-  # 'traffic_cone': 8,
-  # 'barrier': 9
-}
+  ## Category IDs
+  CAT_ID: {
+    'car': 0, 
+    'truck': 1, 
+    'trailer': 2, 
+    'pedestrian': 3, 
+    'bus': 4,
+    'bicycle': 5,
+    'motorcycle': 6, 
+    'construction_vehicle': 7, 
+    # 'traffic_cone': 8,
+    # 'barrier': 9
+  }
 
-## MISC ########################################################################
-VERBOSE: True                     # enable verbose mode
-IMG_ID_LEN: 8                     # length of string image ID
-PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
-CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
-FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
-LOG_OUT_DIR: "../../output/logs"  # logging output directory
+  ## MISC ########################################################################
+  VERBOSE: True                     # enable verbose mode
+  IMG_ID_LEN: 8                     # length of string image ID
+  PC_MIN_DIST: 1                    # Ignore points closer than this distance (m)
+  CONSOLE_LOG_LEVEL: "INFO"         # logging level for console
+  FILE_LOG_LEVEL: "WARNING"         # logging level for the log file
+  LOG_OUT_DIR: "../../output/logs"  # logging output directory

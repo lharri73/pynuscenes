@@ -164,8 +164,8 @@ def render_pc_in_bev(pc, ax=None, point_size=1, color='k', x_lim=(-20, 20), y_li
 
     :param pc (np.float32: m, n): point cloud as a numpy array
     :param ax (plt ax): Axes on which to render the points
-    :param view (np.float32: n, n): Defines an arbitrary projection (n <= 4).
     :param point_size (int): point size
+    :param color: points color in Matplotlib color format
     :param x_lim (int, int): x (min, max) range for plotting
     :param y_lim (int, int): y (min, max) range for plotting
     """

@@ -17,6 +17,7 @@ from pyquaternion import Quaternion
 from pynuscenes.utils import constants as _C
 from pynuscenes.utils.io_utils import yaml_load
 from pynuscenes.utils import log
+from pprint import pprint
 
 
 class NuscenesDataset(NuScenes):
@@ -27,8 +28,7 @@ class NuscenesDataset(NuScenes):
         """
         :param cfg (str): path to the config file
         """
-        self.cfg = cfg if isinstance(cfg, EasyDict) else yaml_load(cfg, safe_load=True)
-    
+        self.cfg = cfg.NUSCENES if isinstance(cfg, EasyDict) else yaml_load(cfg, safe_load=True).NUSCENES
         ## Sanity checks
         assert split in _C.NUSCENES_SPLITS[version], \
             'SPLIT not valid.'
