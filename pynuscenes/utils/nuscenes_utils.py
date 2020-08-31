@@ -44,7 +44,7 @@ def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
     """
     Map point cloud from camera coordinates to the image
     
-    :param pc (PointCloud): point cloud in vehicle or global coordinates
+    :param pc (PointCloud): point cloud in camera coordinates
     :param cam_cs_record (dict): Camera calibrated sensor record
     :param img_shape: shape of the image (width, height)
     :param coordinates (str): Point cloud coordinates ('vehicle', 'global') 

@@ -183,7 +183,7 @@ def render_pc_in_bev(pc, ax=None, point_size=1, color='k', x_lim=(-20, 20), y_li
     ax.set_ylim(y_lim[0], y_lim[1])
     return ax
 ##------------------------------------------------------------------------------
-def render_3dbox_in_image(box, img, cam_intrinsic, ax=None):
+def render_3dboxes_in_image(boxes, img, cam_intrinsic, ax=None, colors=('b', 'r', 'k')):
     """
     Render 3D boxes on an image. Boxes must be in camera's coordinate system
     :param boxes (Box): 3D boxes 
@@ -191,21 +191,22 @@ def render_3dbox_in_image(box, img, cam_intrinsic, ax=None):
     :param cam_cs_record (dict): Camera cs_record
     :param ax (pyplot ax): Axes onto which to render
     """
-    if not box_in_image(box, cam_intrinsic, (1600, 900)):
-        return
-    
     if ax is None:
-        _, ax = plt.subplots(1, 1, figsize=(9, 16))
-
+        # _, ax = plt.subplots(1, 1, figsize=(9, 16))
+        _, ax = plt.subplots(1, 1)
     h, w, _ = img.shape
     ax.imshow(img)
-    box.render(ax, view=cam_intrinsic, normalize=True)
-
-    # Limit visible range.
     ax.set_xlim(0, w)
     ax.set_ylim(h, 0)
     ax.axis('off')
-    ax.set_aspect('equal')
+    
+    ax.axis('off')
+    # ax.set_aspect('equal')
+
+    for box in boxes:
+        if not box_in_image(box, cam_intrinsic, (1600, 900)):
+            continue
+        box.render(ax, view=cam_intrinsic, normalize=True, linewidth=1, colors=colors)
     
     return ax
 ##------------------------------------------------------------------------------
