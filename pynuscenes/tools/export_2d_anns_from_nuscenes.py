@@ -169,6 +169,7 @@ def main(args):
         #     ax = draw_xywh_bbox(bbox, ax)
             
         # plt.savefig('this')
+        # plt.close()
         # input('here')
         # ##------------------
 

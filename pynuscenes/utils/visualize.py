@@ -192,15 +192,12 @@ def render_3dboxes_in_image(boxes, img, cam_intrinsic, ax=None, colors=('b', 'r'
     :param ax (pyplot ax): Axes onto which to render
     """
     if ax is None:
-        # _, ax = plt.subplots(1, 1, figsize=(9, 16))
-        _, ax = plt.subplots(1, 1)
+        _, ax = plt.subplots()
     h, w, _ = img.shape
     ax.imshow(img)
-    ax.set_xlim(0, w)
-    ax.set_ylim(h, 0)
-    ax.axis('off')
-    
-    ax.axis('off')
+    # ax.set_xlim(0, w)
+    # ax.set_ylim(h, 0)
+    # ax.axis('off')
     # ax.set_aspect('equal')
 
     for box in boxes:

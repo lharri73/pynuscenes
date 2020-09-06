@@ -126,6 +126,7 @@ class CocoConverter:
             # ax = self.coco_dataset.showImgAnn(np.asarray(image), this_sample_anns, bbox_only=True, BGR=False)
             # # plt.show(block=False)
             # plt.savefig('fig.jpg')
+            # plt.close()
             # input('here plot')
 
         self.logger.info('Saving annotations to disk')

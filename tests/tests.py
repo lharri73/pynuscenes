@@ -26,12 +26,14 @@ def test_visualization(nusc):
                                         dot_size = 8)
         # plt.show(block=False)
         plt.savefig('0_camera_radar.jpg')
+        plt.close()
 
         ## Render one sensor using nuscenes devkit API
         sample_data_token = sample['camera'][2]['token']
         nusc.render_sample_data(sample_data_token)
         # plt.show(block=False)
         plt.savefig('0_camera.jpg')
+        plt.close()
 
         ## Render sample using nuscenes_dataset API in 3D
         nsvis.render_sample_in_3d(sample, 

@@ -1,5 +1,6 @@
 import yaml
 from easydict import EasyDict as edict
+import matplotlib.pyplot as plt
 
 def yaml_load(fileName, safe_load=False):
     """
@@ -21,7 +22,6 @@ def save_fig(filepath, fig=None, format='pdf'):
     '''
     Save Matplotlib figure with no whitespace in different formats
     '''
-    import matplotlib.pyplot as plt
     if not fig:
         fig = plt.gcf()
 
