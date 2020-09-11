@@ -72,7 +72,6 @@ def map_pointcloud_to_image(pointcloud, cam_intrinsic, img_shape=(1600,900)):
     mask = np.logical_and(mask, points[1, :] < height - 1)
     points = points[:, mask]
     depths = depths[mask]
-
     return points, depths, mask
 ##------------------------------------------------------------------------------
 def map_annotation_to_camera(annotation, cam_cs_record, cam_pose_record,
@@ -125,7 +124,7 @@ def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
         # Project corners that are in front of the camera to 2d to get bbox in pixel coords.
         imcorners = view_points(corners, view, normalize=True)[:2]
         bbox = (np.min(imcorners[0]), np.min(imcorners[1]), np.max(imcorners[0]), np.max(imcorners[1]))
-    
+
         # Crop bbox to prevent it extending outside image.
         bbox_crop = tuple(max(0, b) for b in bbox)
         bbox_crop = (min(imsize[0], bbox_crop[0]),
@@ -134,7 +133,8 @@ def box_3d_to_2d_simple(box, view, imsize, mode='xywh'):
                      min(imsize[1], bbox_crop[3]))
 
         # Detect if a cropped box is empty.
-        if bbox_crop[0] >= bbox_crop[2] or bbox_crop[1] >= bbox_crop[3]:
+        # if bbox_crop[0] >= bbox_crop[2] or bbox_crop[1] >= bbox_crop[3]:
+        if bbox_crop[0] >= bbox_crop[2]-1 or bbox_crop[1] >= bbox_crop[3]-1:
             return None
         
         if mode == 'xywh':
