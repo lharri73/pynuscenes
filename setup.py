@@ -1,9 +1,18 @@
+import setuptools
+import sys
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
+
+if '--headless' in sys.argv:
+    ## mayavi will fail to install (as a result of vtk) due to a lack
+    ## of compatible display driver for vtk. 
+    requirements.remove("vtk")
+    requirements.remove("mayavi")
+    sys.argv.remove("--headless")
 
 setuptools.setup(
     name="nuscenes_dataset",
@@ -20,5 +29,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=requirements,
+    dependency_links=[
+        "git+https://github.com/mrnabati/cocoapi_plus.git#egg=cocoplus",
+        "git+https://github.com/enthought/mayavi.git#egg=mayavi"
+    ],
     python_requires='>=3.6',
 )
