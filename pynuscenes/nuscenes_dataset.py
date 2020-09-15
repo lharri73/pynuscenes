@@ -7,7 +7,6 @@ from easydict import EasyDict
 import numpy as np
 from PIL import Image
 import os.path as osp
-from tqdm import tqdm as tqdm
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.geometry_utils import box_in_image
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud
@@ -107,7 +106,7 @@ class NuscenesDataset(NuScenes):
         ## Loop over all the scenes
         self.logger.info('Creating database')
         all_frames = []
-        for scene in tqdm(scenes_list):
+        for scene in scenes_list:
             scene_frames = []
             scene_record= self.get('scene', scene)
             sample_record= self.get('sample', scene_record['first_sample_token'])
