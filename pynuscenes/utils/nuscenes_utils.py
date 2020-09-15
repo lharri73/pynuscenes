@@ -271,6 +271,10 @@ def global_to_vehicle(data, pose_record):
 
     ## Apply the transforms
     obj.translate(translation_matrix)
+    if isinstance(obj, RadarPointCloud):
+        velocity = np.array(data.points[8:10,:])
+        velocity = np.vstack((velocity, np.zeros((1,data.points.shape[1]))))
+        data.points[8:10,:] = np.dot(rotation_matrix, velocity)[:2,:]
     obj.rotate(rotation_matrix)
     
     return obj
@@ -295,6 +299,10 @@ def vehicle_to_global(data, pose_record):
     
     ## Apply the transforms
     obj.rotate(rotation_matrix)
+    if isinstance(obj, RadarPointCloud):
+        velocity = np.array(data.points[8:10,:])
+        velocity = np.vstack((velocity, np.zeros((1,data.points.shape[1]))))
+        data.points[8:10,:] = np.dot(rotation_matrix, velocity)[:2,:]
     obj.translate(translation_matrix)
     
     return obj
@@ -325,6 +333,10 @@ def vehicle_to_sensor(data, cs_record):
 
     ## Apply the transforms
     obj.translate(translation_matrix)
+    if isinstance(obj, RadarPointCloud):
+        velocity = np.array(data.points[8:10,:])
+        velocity = np.vstack((velocity, np.zeros((1,data.points.shape[1]))))
+        data.points[8:10,:] = np.dot(rotation_matrix, velocity)[:2,:]
     obj.rotate(rotation_matrix)
     
     return obj
@@ -349,6 +361,10 @@ def sensor_to_vehicle(data, cs_record):
 
     ## Apply the transforms
     obj.rotate(rotation_matrix)
+    if isinstance(obj, RadarPointCloud):
+        velocity = np.array(data.points[8:10,:])
+        velocity = np.vstack((velocity, np.zeros((1,data.points.shape[1]))))
+        data.points[8:10,:] = np.dot(rotation_matrix, velocity)[:2,:]
     obj.translate(translation_matrix)
 
     return obj
