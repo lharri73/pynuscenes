@@ -7,6 +7,7 @@ from nuscenes.utils.geometry_utils import view_points, box_in_image
 from nuscenes.utils import splits
 from pynuscenes.utils import constants as NS_C
 from nuscenes.utils.data_classes import Box, LidarPointCloud, RadarPointCloud, PointCloud
+from nuscenes.eval.detection.data_classes import DetectionBox
 
 
 def map_pointcloud_to_camera(pointcloud, cam_cs_record, cam_pose_record,
@@ -259,8 +260,22 @@ def global_to_vehicle(data, pose_record):
         rotation_matrix = Quaternion(pose_record['rotation']).rotation_matrix.T
     elif isinstance(obj, Box):
         rotation_matrix = Quaternion(pose_record['rotation']).inverse
+    elif isinstance(obj, DetectionBox):
+        quat = Quaternion(pose_record['rotation']).inverse
+
+        obj.translation += translation_matrix
+
+        obj.translation = np.dot(quat.rotation_matrix, np.array(obj.translation))
+        obj.rotation = quat * Quaternion(obj.rotation)
+        obj.velocity = np.dot(quat.rotation_matrix, np.array([obj.velocity[0], obj.velocity[1], 0]))
+
+        obj.translation = obj.translation.tolist()
+        obj.rotation = obj.rotation.elements.tolist()
+        velTmp = obj.velocity.tolist()
+        obj.velocity = [velTmp[0], velTmp[1]]
+        return obj
     else:
-        raise Exception('Input must be a PointCloud or Box object')
+        raise Exception('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
     
     ## TODO: check for correctness then uncomment
 #     elif isinstance(pc, np.ndarray):
@@ -294,8 +309,22 @@ def vehicle_to_global(data, pose_record):
         rotation_matrix = Quaternion(pose_record['rotation']).rotation_matrix
     elif isinstance(obj, Box):
         rotation_matrix = Quaternion(pose_record['rotation'])
+    elif isinstance(obj, DetectionBox):
+        quat = Quaternion(pose_record['rotation'])
+
+        obj.translation = np.dot(quat.rotation_matrix, np.array(obj.translation))
+        obj.rotation = quat * Quaternion(obj.rotation)
+        obj.velocity = np.dot(quat.rotation_matrix, np.array([obj.velocity[0], obj.velocity[1], 0]))
+
+        obj.translation += translation_matrix
+
+        obj.translation = obj.translation.tolist()
+        obj.rotation = obj.rotation.elements.tolist()
+        velTmp = obj.velocity.tolist()
+        obj.velocity = [velTmp[0], velTmp[1]]
+        return obj
     else:
-        raise Exception('Input must be a PointCloud or Box object')
+        raise Exception('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
     
     ## Apply the transforms
     obj.rotate(rotation_matrix)
