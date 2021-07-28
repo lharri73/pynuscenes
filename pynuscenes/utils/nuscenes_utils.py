@@ -275,7 +275,7 @@ def global_to_vehicle(data, pose_record):
         obj.velocity = [velTmp[0], velTmp[1]]
         return obj
     else:
-        raise Exception('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
+        raise TypeError('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
     
     ## TODO: check for correctness then uncomment
 #     elif isinstance(pc, np.ndarray):
@@ -324,7 +324,7 @@ def vehicle_to_global(data, pose_record):
         obj.velocity = [velTmp[0], velTmp[1]]
         return obj
     else:
-        raise Exception('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
+        raise TypeError('Input must be a PointCloud or Box object. got {}'.format(type(obj)))
     
     ## Apply the transforms
     obj.rotate(rotation_matrix)
@@ -352,7 +352,7 @@ def vehicle_to_sensor(data, cs_record):
     elif isinstance(obj, Box):
         rotation_matrix = Quaternion(cs_record['rotation']).inverse
     else:
-        raise Exception('Input must be a PointCloud or Box object')
+        raise TypeError('Input must be a PointCloud or Box object')
         
     ## TODO: check for correctness then uncomment
 #     elif isinstance(pc, np.ndarray):
@@ -386,7 +386,7 @@ def sensor_to_vehicle(data, cs_record):
     elif isinstance(obj, Box):
         rotation_matrix = Quaternion(cs_record['rotation'])
     else:
-        raise Exception('Input must be a PointCloud or Box object')
+        raise TypeError('Input must be a PointCloud or Box object')
 
     ## Apply the transforms
     obj.rotate(rotation_matrix)
