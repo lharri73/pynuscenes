@@ -22,8 +22,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=requirements,
-    dependency_links=[
-        "git+https://github.com/mrnabati/cocoapi_plus.git#egg=cocoplus"
-    ],
+    extras_require={
+        'coco': ['cocoplus @ git+https://github.com/mrnabati/cocoapi_plus']
+    },
     python_requires='>=3.6',
 )
