@@ -220,6 +220,7 @@ class NuscenesDataset(NuScenes):
             this_ann['category_id'] = self.cfg.CAT_ID[this_ann['category']]
             this_ann['num_lidar_pts'] = ann['num_lidar_pts']
             this_ann['num_radar_pts'] = ann['num_radar_pts']
+            this_ann['instance_token'] = ann['instance_token']
 
             ## Create Box object (boxes are in global coordinates)
             box = Box(ann['translation'], ann['size'], Quaternion(ann['rotation']),
