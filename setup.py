@@ -9,7 +9,7 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name="nuscenes_dataset",
-    version="0.1",
+    version="0.2",
     author="Ramin Nabati, Landon Harris",
     description="A devkit for the NuScenes dataset",
     long_description=long_description,
