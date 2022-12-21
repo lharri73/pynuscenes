@@ -8,7 +8,7 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(
-    name="nuscenes_dataset",
+    name="pynuscenes",
     version="0.2",
     author="Ramin Nabati, Landon Harris",
     description="A devkit for the NuScenes dataset",
