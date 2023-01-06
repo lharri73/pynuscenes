@@ -451,13 +451,13 @@ def bbox_to_corners(bboxes):
     return corners
 ##------------------------------------------------------------------------------
 def corners3d_to_image(corners, cam_cs_record, img_shape):
-    """ # TODO: check compatibility
-    Return the 2D box corners mapped to the image plane
-    
-    :param corners (np.array <N, 3, 8>)
-    :param cam_cs_record (dict): calibrated sensor record of a camera dictionary from nuscenes dataset
-    :param img_shape (tuple<width, height>)
-    :return (ndarray<N,2,8>, list<N>)
+    """
+    Return the 2D box corners mapped to the image plane.
+
+    :param corners: (np.array <N, 3, 8>)
+    :param cam_cs_record: (dict) calibrated sensor record of a camera dictionary from nuscenes dataset
+    :param img_shape: (tuple<width, height>)
+    :return corners: (ndarray<N,2,8>, list<N>)
     """
     cornerList = []
     mask = []
@@ -477,6 +477,12 @@ def corners3d_to_image(corners, cam_cs_record, img_shape):
     return np.array(cornerList), mask
 ##------------------------------------------------------------------------------
 def quaternion_to_ry(quat: Quaternion):
+    """
+    Get the yaw angle from a quaternion.
+
+    :param quat: (Quaternion)
+    :return angle: yaw angle in radians (float)
+    """
     v = np.dot(quat.rotation_matrix, np.array([1,0,0]))
     yaw = np.arctan2(v[1], v[0])
     return yaw

@@ -1,5 +1,5 @@
-nuscenes-devkit
-#PyQt5==5.13.1
+nuscenes-devkit==1.1.9
 pyyaml==5.4
 easydict==1.9
 tqdm
+numpy<=1.20.3

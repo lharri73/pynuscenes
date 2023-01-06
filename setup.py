@@ -23,7 +23,14 @@ setuptools.setup(
     ],
     install_requires=requirements,
     extras_require={
-        'coco': ['cocoplus @ git+https://github.com/mrnabati/cocoapi_plus']
+        'coco': ['cocoplus @ git+https://github.com/mrnabati/cocoapi_plus'],
+        'docs': [
+            'sphinx',
+            'sphinx_rtd_theme',
+            'sphinx-toolbox',
+            'sphinx-hoverxref',
+            'readthedocs-sphinx-search'
+        ]
     },
     python_requires='>=3.6',
 )

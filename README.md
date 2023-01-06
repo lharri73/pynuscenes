@@ -1,6 +1,6 @@
 # PyNuscnes
 
-PyNuscenes is a dataloader for the [NuScenes](https://www.nuscenes.org/) dataset.
+PyNuscenes is a dataloader for the [NuScenes](https://www.nuscenes.org/nuscenes) dataset.
 It uses the [NuScenes devkit](https://github.com/nutonomy/nuscenes-devkit) and 
 provides APIs for loading sensor data in different coordinate systems.
 
@@ -15,28 +15,22 @@ provides APIs for loading sensor data in different coordinate systems.
 ### Requirements
 - Linux or macOS
 - Python>= 3.6
-- pycocotools: 
-    ```bash
-    pip install cython pycocotools
-    ```
-- cocoplus:
-    ```bash
-    git clone https://github.com/lharri73/cocoapi_plus.git
-    cd cocoapi_plus
-    pip install -e .
-    ```
+- numpy<=1.20.3
+  - Note: this is enforced by pip during installation of this package
+  - There is a bug in the evaluation code of NuScenes devkit that requires numpy<=1.20.3. You can try other version of 
+    numpy, but you may encounter some errors. (this is during evaluation only)
 
-### Build nuscenes_dataset
+### Build pynuscenes
 After having the above dependencies, run:
 ```bash
-git clone https://github.com/lharri73/nuscenes_dataset.git
-cd nuscenes_dataset
+git clone https://github.com/lharri73/pynuscenes.git
+cd pynuscenes
 pip install -e .
 ```
 
 ## Getting Started
 
-#### Frame Structure
+### Frame Structure
 
 Dataloader frames returned from the iterator
 ```yaml

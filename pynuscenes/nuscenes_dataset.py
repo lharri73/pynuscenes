@@ -20,8 +20,8 @@ from pprint import pprint
 
 
 class NuscenesDataset(NuScenes):
-    """
-    An improved database and dataloader class for nuScenes.
+    """An improved database and dataloader class for nuScenes.
+
     """
     def __init__(self, dataroot, version, split, cfg, generate_db=True):
         """
