@@ -66,10 +66,16 @@ class NuscenesDataset(NuScenes):
         """
         Get one sample from the dataset
         
-        :param idx (int): index of the sample to return
+        :param idx (Union[int,str]): index of the sample to return
         :return sample (dict): one sample from the dataset
         """
-        frame = copy.deepcopy(self.db['frames'][idx])
+        if type(idx) == int:
+            frame = copy.deepcopy(self.db['frames'][idx])
+        elif type(idx) == str:
+            frame_idx = self.db['rev_map'].get(idx, None)
+            if frame_idx is None:
+                raise KeyError("Sample with token {} not found in the dataset".format(idx))
+            frame = copy.deepcopy(self.db['frames'][frame_idx])
         data = self.dataset_mapper(frame)
         return data
     ##--------------------------------------------------------------------------
@@ -106,6 +112,8 @@ class NuscenesDataset(NuScenes):
         ## Loop over all the scenes
         self.logger.info('Creating database')
         all_frames = []
+        rev_map = {}
+        i=0
         for scene in scenes_list:
             scene_frames = []
             scene_record= self.get('scene', scene)
@@ -113,6 +121,8 @@ class NuscenesDataset(NuScenes):
             
             ## Loop over all samples in this scene
             while True:
+                rev_map.update({sample_record['token']: i})
+                i += 1
                 scene_frames += self._get_sample_frames(sample_record)
                 if sample_record['next'] == "":
                     break
@@ -122,7 +132,8 @@ class NuscenesDataset(NuScenes):
 
         metadata = {"version": self.cfg.VERSION}
         db = {"frames": all_frames,
-              "metadata": metadata}
+              "metadata": metadata,
+              "reverse_map": rev_map}
         
         self.logger.info('Created database in %.1f seconds' % (time.time()-startTime))
         self.logger.info('Number of samples in {} split: {}'.format(self.cfg.SPLIT,
