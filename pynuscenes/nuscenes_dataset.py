@@ -133,7 +133,7 @@ class NuscenesDataset(NuScenes):
         metadata = {"version": self.cfg.VERSION}
         db = {"frames": all_frames,
               "metadata": metadata,
-              "reverse_map": rev_map}
+              "rev_map": rev_map}
         
         self.logger.info('Created database in %.1f seconds' % (time.time()-startTime))
         self.logger.info('Number of samples in {} split: {}'.format(self.cfg.SPLIT,
