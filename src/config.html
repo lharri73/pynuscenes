@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration Files &mdash; pynuscenes 0.2 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/rtd_sphinx_search.min.css" type="text/css" />
+    <link rel="canonical" href="https://lharri73.github.io/pynuscenes/src/config.html"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/js/rtd_search_config.js"></script>
+        <script src="../_static/js/rtd_sphinx_search.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Usage and Format" href="usage.html" />
+    <link rel="prev" title="An Iterable Dataloader for nuScenes" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pynuscenes
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage and Format</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autodoc.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pynuscenes</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration Files</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/lharri73/pynuscenes/blob/master/docs/src/config.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration-files">
+<h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this heading"></a></h1>
+<p>The configuration files for the PyNuscenes dataset are located in
+<span class="guilabel">pynuscenes/config/cfg.yml</span>.</p>
+<p>An example configuration file can be found below:</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you do not require a sensor modality, remove it from the configuration file to reduce cpu and disk overhead.</p>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">NUSCENES</span><span class="p">:</span>
+<span class="w">  </span><span class="c1">## DATLOADER ####################################################################</span>
+<span class="w">  </span><span class="nt">SAMPLE_MODE</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scene&quot;</span><span class="w">    </span><span class="c1"># &quot;camera&quot;: samples based on each camera&#39;s FOV</span>
+<span class="w">                          </span><span class="c1">#    this mode only includes point cloud and annotations</span>
+<span class="w">                          </span><span class="c1">#    that are visible inside the image</span>
+<span class="w">                          </span><span class="c1"># &quot;scene&quot; sample contains all sensors in one scene.</span>
+<span class="w">                          </span><span class="c1"># Both modes return data in vehicle&#39;s coordinate system</span>
+
+<span class="w">  </span><span class="nt">REF_POSE_CHANNEL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;LIDAR_TOP&quot;</span><span class="w">  </span><span class="c1"># reference vehicle pose for &quot;scene&quot; sample mode</span>
+<span class="w">  </span><span class="nt">GEN_2D_BBOX</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">True</span><span class="w">              </span><span class="c1"># generate 2D bboxes from 3D annotations</span>
+<span class="w">  </span><span class="nt">LIDAR_SWEEPS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">                </span><span class="c1"># number of LIDAR sweeps</span>
+<span class="w">  </span><span class="nt">RADAR_SWEEPS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">                </span><span class="c1"># number of Radar sweeps</span>
+<span class="w">  </span><span class="nt">BOX_VELOCITY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span><span class="w">            </span><span class="c1"># calculate velocity for each annotation</span>
+<span class="w">  </span><span class="nt">MAX_BOX_DIST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                </span><span class="c1"># Maximum box distance in m to include in annotations</span>
+<span class="w">                                 </span><span class="c1"># (0 for no limit on distance)</span>
+<span class="w">  </span><span class="nt">ANN_VIS_LEVELS</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;2&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;3&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;4&#39;</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1">## annotation visibility levels</span>
+<span class="w">  </span><span class="nt">FILTER_RADARS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">True</span><span class="w">            </span><span class="c1"># Filter Radars based on camera view</span>
+
+<span class="w">  </span><span class="c1">## sensors to include in the databse. All sensors not in this list are ignored.</span>
+<span class="w">  </span><span class="nt">SENSORS</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span>
+<span class="w">    </span><span class="s">&quot;CAM_FRONT_LEFT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;CAM_FRONT_RIGHT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;CAM_FRONT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;CAM_BACK_LEFT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;CAM_BACK_RIGHT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;CAM_BACK&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;RADAR_FRONT_LEFT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;RADAR_FRONT_RIGHT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;RADAR_FRONT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;RADAR_BACK_LEFT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;RADAR_BACK_RIGHT&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="s">&quot;LIDAR_TOP&quot;</span><span class="p p-Indicator">,</span>
+<span class="w">  </span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="c1">## categories to include in database and their corresponding name mapping.</span>
+<span class="w">  </span><span class="c1">## Any category not in this dictionary is ignored.</span>
+<span class="w">  </span><span class="nt">CATEGORIES</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span>
+<span class="w">     </span><span class="s">&#39;vehicle.car&#39;</span><span class="p p-Indicator">:</span><span class="w">                          </span><span class="s">&#39;car&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.truck&#39;</span><span class="p p-Indicator">:</span><span class="w">                        </span><span class="s">&#39;truck&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.trailer&#39;</span><span class="p p-Indicator">:</span><span class="w">                      </span><span class="s">&#39;trailer&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;human.pedestrian.adult&#39;</span><span class="p p-Indicator">:</span><span class="w">               </span><span class="s">&#39;pedestrian&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;human.pedestrian.child&#39;</span><span class="p p-Indicator">:</span><span class="w">               </span><span class="s">&#39;pedestrian&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;human.pedestrian.construction_worker&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">&#39;pedestrian&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;human.pedestrian.police_officer&#39;</span><span class="p p-Indicator">:</span><span class="w">      </span><span class="s">&#39;pedestrian&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.bus.bendy&#39;</span><span class="p p-Indicator">:</span><span class="w">                    </span><span class="s">&#39;bus&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.bus.rigid&#39;</span><span class="p p-Indicator">:</span><span class="w">                    </span><span class="s">&#39;bus&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.bicycle&#39;</span><span class="p p-Indicator">:</span><span class="w">                      </span><span class="s">&#39;bicycle&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.motorcycle&#39;</span><span class="p p-Indicator">:</span><span class="w">                   </span><span class="s">&#39;motorcycle&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;vehicle.construction&#39;</span><span class="p p-Indicator">:</span><span class="w">                 </span><span class="s">&#39;construction_vehicle&#39;</span><span class="p p-Indicator">,</span>
+<span class="w">   </span><span class="c1"># &#39;movable_object.trafficcone&#39;:           &#39;traffic_cone&#39;,</span>
+<span class="w">   </span><span class="c1"># &#39;movable_object.barrier&#39;:               &#39;barrier&#39;,</span>
+<span class="w">  </span><span class="p p-Indicator">}</span>
+
+<span class="w">  </span><span class="c1">## Category IDs</span>
+<span class="w">  </span><span class="nt">CAT_ID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span>
+<span class="w">     </span><span class="s">&#39;car&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;truck&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;trailer&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;pedestrian&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;bus&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;bicycle&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;motorcycle&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">,</span>
+<span class="w">     </span><span class="s">&#39;construction_vehicle&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="nv">7</span><span class="p p-Indicator">,</span>
+<span class="w">   </span><span class="c1"># &#39;traffic_cone&#39;: 8,</span>
+<span class="w">   </span><span class="c1"># &#39;barrier&#39;: 9</span>
+<span class="w">  </span><span class="p p-Indicator">}</span>
+
+<span class="w">  </span><span class="c1">## MISC ########################################################################</span>
+<span class="w">  </span><span class="nt">VERBOSE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">True</span><span class="w">                     </span><span class="c1"># enable verbose mode</span>
+<span class="w">  </span><span class="nt">IMG_ID_LEN</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span><span class="w">                     </span><span class="c1"># length of string image ID</span>
+<span class="w">  </span><span class="nt">PC_MIN_DIST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">                    </span><span class="c1"># Ignore points closer than this distance (m)</span>
+<span class="w">  </span><span class="nt">CONSOLE_LOG_LEVEL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;INFO&quot;</span><span class="w">         </span><span class="c1"># logging level for console</span>
+<span class="w">  </span><span class="nt">FILE_LOG_LEVEL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;WARNING&quot;</span><span class="w">         </span><span class="c1"># logging level for the log file</span>
+<span class="w">  </span><span class="nt">LOG_OUT_DIR</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;../../output/logs&quot;</span><span class="w">  </span><span class="c1"># logging output directory</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="An Iterable Dataloader for nuScenes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage and Format" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Landon Harris, Ramin Nabati.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pynuscenes.nuscenes_dataset &mdash; pynuscenes 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/rtd_sphinx_search.min.css" type="text/css" />
+    <link rel="canonical" href="https://lharri73.github.io/pynuscenes/_modules/pynuscenes/nuscenes_dataset.html"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/js/rtd_search_config.js"></script>
+        <script src="../../_static/js/rtd_sphinx_search.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            pynuscenes
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../src/config.html">Configuration Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../src/usage.html">Usage and Format</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../src/autodoc.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pynuscenes</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pynuscenes.nuscenes_dataset</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pynuscenes.nuscenes_dataset</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">from</span> <span class="nn">easydict</span> <span class="kn">import</span> <span class="n">EasyDict</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">os.path</span> <span class="k">as</span> <span class="nn">osp</span>
+<span class="kn">from</span> <span class="nn">nuscenes.nuscenes</span> <span class="kn">import</span> <span class="n">NuScenes</span>
+<span class="kn">from</span> <span class="nn">nuscenes.utils.geometry_utils</span> <span class="kn">import</span> <span class="n">box_in_image</span>
+<span class="kn">from</span> <span class="nn">nuscenes.utils.data_classes</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">LidarPointCloud</span><span class="p">,</span> <span class="n">RadarPointCloud</span>
+
+<span class="kn">import</span> <span class="nn">pynuscenes.utils.nuscenes_utils</span> <span class="k">as</span> <span class="nn">nsutils</span>
+<span class="kn">from</span> <span class="nn">pyquaternion</span> <span class="kn">import</span> <span class="n">Quaternion</span>
+<span class="kn">from</span> <span class="nn">pynuscenes.utils</span> <span class="kn">import</span> <span class="n">constants</span> <span class="k">as</span> <span class="n">_C</span>
+<span class="kn">from</span> <span class="nn">pynuscenes.utils.io_utils</span> <span class="kn">import</span> <span class="n">yaml_load</span>
+<span class="kn">from</span> <span class="nn">pynuscenes.utils</span> <span class="kn">import</span> <span class="n">log</span>
+<span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pprint</span>
+
+
+<div class="viewcode-block" id="NuscenesDataset"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset">[docs]</a><span class="k">class</span> <span class="nc">NuscenesDataset</span><span class="p">(</span><span class="n">NuScenes</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An improved database and dataloader class for nuScenes.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="NuscenesDataset.__init__"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataroot</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">generate_db</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cfg (str): path to the config file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">NUSCENES</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">EasyDict</span><span class="p">)</span> <span class="k">else</span> <span class="n">yaml_load</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">safe_load</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">NUSCENES</span>
+        <span class="c1">## Sanity checks</span>
+        <span class="k">assert</span> <span class="n">split</span> <span class="ow">in</span> <span class="n">_C</span><span class="o">.</span><span class="n">NUSCENES_SPLITS</span><span class="p">[</span><span class="n">version</span><span class="p">],</span> \
+            <span class="s1">&#39;SPLIT not valid.&#39;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;camera&quot;</span><span class="p">,</span> <span class="s2">&quot;scene&quot;</span><span class="p">],</span> \
+            <span class="s1">&#39;SAMPLE_MODE not valid.&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="o">==</span> <span class="s2">&quot;camera&quot;</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">sum</span><span class="p">([</span><span class="mi">1</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SENSORS</span> <span class="k">if</span> <span class="s1">&#39;CAM&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">]),</span> \
+                <span class="s1">&#39;At least one camera should be in SENSORS when &quot;camera&quot; sample mode is selected.&#39;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">log</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">console_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CONSOLE_LOG_LEVEL</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataroot</span> <span class="o">=</span> <span class="n">dataroot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_id</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">COORDINATES</span> <span class="o">=</span> <span class="s1">&#39;vehicle&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loading NuScenes&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">VERSION</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SPLIT</span> <span class="o">=</span> <span class="n">split</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1">## Create dataset categories</span>
+        <span class="k">if</span> <span class="s2">&quot;CAT_ID&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CAT_ID</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">values</span><span class="p">()}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">_C</span><span class="o">.</span><span class="n">DETECTION_ID</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">values</span><span class="p">()}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])}</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">version</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">VERSION</span><span class="p">,</span>
+                         <span class="n">dataroot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataroot</span><span class="p">,</span>
+                         <span class="n">verbose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">generate_db</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_db</span><span class="p">()</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.__getitem__"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get one sample from the dataset</span>
+<span class="sd">        </span>
+<span class="sd">        :param idx (Union[int,str]): index of the sample to return</span>
+<span class="sd">        :return sample (dict): one sample from the dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">&#39;frames&#39;</span><span class="p">][</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">frame_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">&#39;rev_map&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">frame_idx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Sample with token </span><span class="si">{}</span><span class="s2"> not found in the dataset&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">&#39;frames&#39;</span><span class="p">][</span><span class="n">frame_idx</span><span class="p">])</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_mapper</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.__len__"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the number of samples in the dataset</span>
+<span class="sd">        </span>
+<span class="sd">        :return len (int): number of sample in the dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">&#39;frames&#39;</span><span class="p">])</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.get_categories"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.get_categories">[docs]</a>    <span class="k">def</span> <span class="nf">get_categories</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return dataset categories and their IDs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.generate_db"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.generate_db">[docs]</a>    <span class="k">def</span> <span class="nf">generate_db</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read and preprocess the dataset samples and annotations, representing </span>
+<span class="sd">        the dataset items in a lightweight, canonical format. This function does </span>
+<span class="sd">        not read the sensor data files (e.g., images are not loaded into memory).</span>
+
+<span class="sd">        :param out_dir (str): Directory to save the database pickle file</span>
+<span class="sd">        :return db (dict): a dictionary containing dataset meta-data </span>
+<span class="sd">            and a list of dicts, one for each sample in the dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## TODO: load a pickled db if it exists</span>
+        <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">scenes_list</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">split_scenes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SPLIT</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Scenes in </span><span class="si">{}</span><span class="s1"> split: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SPLIT</span><span class="p">,</span> 
+                                                        <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">scenes_list</span><span class="p">))))</span>
+
+        <span class="c1">## Loop over all the scenes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Creating database&#39;</span><span class="p">)</span>
+        <span class="n">all_frames</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rev_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">i</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="n">scenes_list</span><span class="p">:</span>
+            <span class="n">scene_frames</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">scene_record</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scene&#39;</span><span class="p">,</span> <span class="n">scene</span><span class="p">)</span>
+            <span class="n">sample_record</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample&#39;</span><span class="p">,</span> <span class="n">scene_record</span><span class="p">[</span><span class="s1">&#39;first_sample_token&#39;</span><span class="p">])</span>
+            
+            <span class="c1">## Loop over all samples in this scene</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">rev_map</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">]:</span> <span class="n">i</span><span class="p">})</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">scene_frames</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_sample_frames</span><span class="p">(</span><span class="n">sample_record</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;next&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">sample_record</span><span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample&#39;</span><span class="p">,</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;next&#39;</span><span class="p">])</span>
+            
+            <span class="n">all_frames</span> <span class="o">+=</span> <span class="n">scene_frames</span>
+
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">VERSION</span><span class="p">}</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;frames&quot;</span><span class="p">:</span> <span class="n">all_frames</span><span class="p">,</span>
+              <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">,</span>
+              <span class="s2">&quot;rev_map&quot;</span><span class="p">:</span> <span class="n">rev_map</span><span class="p">}</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Created database in </span><span class="si">%.1f</span><span class="s1"> seconds&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">startTime</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Number of samples in </span><span class="si">{}</span><span class="s1"> split: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SPLIT</span><span class="p">,</span>
+                                                          <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">all_frames</span><span class="p">))))</span>
+        <span class="c1">## if an output directory is specified, write to a pkl file</span>
+        <span class="k">if</span> <span class="n">out_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saving db to pickle file&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdirs</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">db_filename</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_db.pkl&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SPLIT</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">db_filename</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">db</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">],</span> <span class="n">f</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">db</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+    <span class="k">def</span> <span class="nf">_get_sample_frames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_record</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create frames from a single sample of the nuscenes dataset</span>
+<span class="sd">        </span>
+<span class="sd">        :param sample_record (dict): sample record dictionary from nuscenes API</span>
+<span class="sd">        :return frames (list): list of frame dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;coordinates&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">COORDINATES</span><span class="p">,</span>
+                 <span class="s1">&#39;sample_token&#39;</span><span class="p">:</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">]}</span>
+        <span class="n">all_frames</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">camera</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">radar</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1">## Get sensor info</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SENSORS</span><span class="p">:</span>
+            <span class="c1"># sd_record = self.get(&#39;sample_data&#39;, sample_record[&#39;data&#39;][channel])</span>
+            <span class="n">sample</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;channel&#39;</span><span class="p">:</span> <span class="n">channel</span><span class="p">,</span>
+                    <span class="s1">&#39;token&#39;</span><span class="p">:</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">channel</span><span class="p">],</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="s1">&#39;CAM&#39;</span> <span class="ow">in</span> <span class="n">channel</span><span class="p">:</span>
+                <span class="n">sample</span><span class="p">[</span><span class="s1">&#39;image_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">camera</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            
+            <span class="k">elif</span> <span class="s1">&#39;RADAR&#39;</span> <span class="ow">in</span> <span class="n">channel</span><span class="p">:</span>
+                <span class="n">radar</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            
+            <span class="k">elif</span> <span class="s1">&#39;LIDAR&#39;</span> <span class="ow">in</span> <span class="n">channel</span><span class="p">:</span>
+                <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;lidar&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">sample</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Channel not recognized.&#39;</span><span class="p">)</span>
+        
+        <span class="c1">## Add sensors to the frame dictionary (LIDAR is already added)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">camera</span><span class="p">):</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;camera&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">camera</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">radar</span><span class="p">):</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">radar</span>
+
+        <span class="c1">## Get annotations</span>
+        <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">]</span>
+        
+        <span class="c1">## for &#39;camera&#39; sample option, create one frame for each camera</span>
+        <span class="k">if</span> <span class="s1">&#39;camera&#39;</span> <span class="ow">in</span> <span class="n">frame</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="o">==</span> <span class="s2">&quot;camera&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cam</span> <span class="ow">in</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;camera&#39;</span><span class="p">]:</span>
+                <span class="n">temp_frame</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+                <span class="n">temp_frame</span><span class="p">[</span><span class="s1">&#39;camera&#39;</span><span class="p">]</span><span class="o">=</span><span class="p">[</span><span class="n">cam</span><span class="p">]</span>
+                <span class="n">temp_frame</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_id</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">FILTER_RADARS</span><span class="p">:</span>
+                    <span class="c1">## Filter Radars based on camera view</span>
+                    <span class="n">temp_frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">temp_frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">]</span> <span class="k">if</span> 
+                        <span class="n">x</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">_C</span><span class="o">.</span><span class="n">RADAR_FOR_CAMERA</span><span class="p">[</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">]]]</span>
+                
+                <span class="n">all_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_frame</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frame_id</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">## for &#39;scene&#39; sample option, create one frame for all sensors</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_id</span>
+            <span class="n">all_frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">all_frames</span>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+    <span class="k">def</span> <span class="nf">_get_anns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ann_tokens</span><span class="p">,</span> <span class="n">ref_pose_record</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get all annotations for a given sample</span>
+<span class="sd">        :param ann_tokens (list): list of annotation tokens</span>
+<span class="sd">        :param cam (dict): ca</span>
+<span class="sd">        &quot;&quot;&quot;</span>        
+        <span class="c1">## TODO: add filtering based on num_radar/num_lidar points here</span>
+        <span class="c1">## TODO: for &#39;scene&#39; samples, ref_pose_record stuff needs attention here</span>
+
+        <span class="n">annotations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">token</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ann_tokens</span><span class="p">):</span>
+            <span class="n">ann</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample_annotation&#39;</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+            <span class="n">this_ann</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CATEGORIES</span><span class="p">[</span><span class="n">ann</span><span class="p">[</span><span class="s1">&#39;category_name&#39;</span><span class="p">]]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;category_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">CAT_ID</span><span class="p">[</span><span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">]]</span>
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;num_lidar_pts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ann</span><span class="p">[</span><span class="s1">&#39;num_lidar_pts&#39;</span><span class="p">]</span>
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;num_radar_pts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ann</span><span class="p">[</span><span class="s1">&#39;num_radar_pts&#39;</span><span class="p">]</span>
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;instance_token&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ann</span><span class="p">[</span><span class="s1">&#39;instance_token&#39;</span><span class="p">]</span>
+
+            <span class="c1">## Create Box object (boxes are in global coordinates)</span>
+            <span class="n">box</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">ann</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">],</span> <span class="n">ann</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">ann</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">]),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">],</span> <span class="n">token</span><span class="o">=</span><span class="n">ann</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">])</span>
+            
+            <span class="c1">## Get distance to vehicle</span>
+            <span class="n">box_dist</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">get_box_dist</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">ref_pose_record</span><span class="p">)</span>
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">box_dist</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">MAX_BOX_DIST</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">box_dist</span> <span class="o">&gt;</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">MAX_BOX_DIST</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+            <span class="c1">## Take to the vehicle coordinate system</span>
+            <span class="n">box</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">global_to_vehicle</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">ref_pose_record</span><span class="p">)</span>
+            
+            <span class="c1">## Calculate box velocity</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">BOX_VELOCITY</span><span class="p">:</span>
+                <span class="n">box</span><span class="o">.</span><span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_velocity</span><span class="p">(</span><span class="n">box</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+
+            <span class="n">this_ann</span><span class="p">[</span><span class="s1">&#39;box_3d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">box</span>
+            <span class="n">annotations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">this_ann</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">annotations</span>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.dataset_mapper"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.dataset_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">dataset_mapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add sensor data in vehicle or global coordinates to the frame</span>
+<span class="sd">        </span>
+<span class="sd">        :param frame (dict): A frame dictionary from the db (no sensor data)</span>
+<span class="sd">        :return frame (dict): frame with all sensor data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sample_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample&#39;</span><span class="p">,</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;sample_token&#39;</span><span class="p">])</span>
+        <span class="n">ref_sd_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample_data&#39;</span><span class="p">,</span> <span class="n">sample_record</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">REF_POSE_CHANNEL</span><span class="p">])</span>
+        <span class="n">ref_pose_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ego_pose&#39;</span><span class="p">,</span> <span class="n">ref_sd_record</span><span class="p">[</span><span class="s1">&#39;ego_pose_token&#39;</span><span class="p">])</span>
+        <span class="n">ref_cs_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calibrated_sensor&#39;</span><span class="p">,</span> <span class="n">ref_sd_record</span><span class="p">[</span><span class="s1">&#39;calibrated_sensor_token&#39;</span><span class="p">])</span>
+        <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;ref_pose_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_pose_record</span>
+
+        <span class="c1">## Load camera data</span>
+        <span class="n">cams</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;camera&#39;</span><span class="p">,[])</span>
+        <span class="k">for</span> <span class="n">cam</span> <span class="ow">in</span> <span class="n">cams</span><span class="p">:</span>
+            <span class="n">sd_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample_data&#39;</span><span class="p">,</span> <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">])</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">osp</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataroot</span><span class="p">,</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">])</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_camera_data</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">image</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">]</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calibrated_sensor&#39;</span><span class="p">,</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;calibrated_sensor_token&#39;</span><span class="p">])</span>
+            <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;pose_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ego_pose&#39;</span><span class="p">,</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;ego_pose_token&#39;</span><span class="p">])</span>
+        
+        <span class="c1">## Load annotations in vehicle coordinates</span>
+        <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_anns</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">],</span>  
+                                       <span class="n">ref_pose_record</span><span class="p">)</span>
+        
+        <span class="c1">## Filter anns outside image if in &#39;camera&#39; mode:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="o">==</span> <span class="s1">&#39;camera&#39;</span><span class="p">:</span>
+            <span class="n">filtered_anns</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">]:</span>
+                <span class="n">box_cam</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">map_annotation_to_camera</span><span class="p">(</span><span class="n">ann</span><span class="p">[</span><span class="s1">&#39;box_3d&#39;</span><span class="p">],</span> 
+                                                           <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">],</span>
+                                                           <span class="n">cam</span><span class="p">[</span><span class="s1">&#39;pose_record&#39;</span><span class="p">],</span>
+                                                           <span class="n">ref_pose_record</span><span class="p">,</span>
+                                                           <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">COORDINATES</span><span class="p">)</span>
+                <span class="n">cam_intrinsic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">][</span><span class="s1">&#39;camera_intrinsic&#39;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">box_in_image</span><span class="p">(</span><span class="n">box_cam</span><span class="p">,</span> <span class="n">cam_intrinsic</span><span class="p">,</span> <span class="p">(</span><span class="mi">1600</span><span class="p">,</span> <span class="mi">900</span><span class="p">)):</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">GEN_2D_BBOX</span><span class="p">:</span>
+                    <span class="n">ann</span><span class="p">[</span><span class="s1">&#39;box_2d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">box_3d_to_2d_simple</span><span class="p">(</span><span class="n">box_cam</span><span class="p">,</span> 
+                                                                <span class="n">cam_intrinsic</span><span class="p">,</span> 
+                                                                <span class="p">(</span><span class="mi">1600</span><span class="p">,</span> <span class="mi">900</span><span class="p">))</span>
+                <span class="n">filtered_anns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ann</span><span class="p">)</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;anns&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_anns</span>
+
+        <span class="c1">## Load LIDAR data in vehicle coordinates</span>
+        <span class="k">if</span> <span class="s1">&#39;lidar&#39;</span> <span class="ow">in</span> <span class="n">frame</span><span class="p">:</span>
+            <span class="n">lidar</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;lidar&#39;</span><span class="p">]</span>
+            <span class="n">sd_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sample_data&#39;</span><span class="p">,</span> <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">])</span>
+            <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calibrated_sensor&#39;</span><span class="p">,</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;calibrated_sensor_token&#39;</span><span class="p">])</span>
+            <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;pose_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ego_pose&#39;</span><span class="p">,</span> <span class="n">sd_record</span><span class="p">[</span><span class="s1">&#39;ego_pose_token&#39;</span><span class="p">])</span>
+            <span class="n">lidar_pc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">LidarPointCloud</span><span class="o">.</span><span class="n">from_file_multisweep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                                        <span class="n">sample_record</span><span class="p">,</span> 
+                                                        <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">],</span> 
+                                                        <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">],</span> 
+                                                        <span class="n">nsweeps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">LIDAR_SWEEPS</span><span class="p">,</span>
+                                                        <span class="n">min_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">PC_MIN_DIST</span><span class="p">)</span>
+            <span class="c1">## Take from sensor to vehicle coordinates</span>
+            <span class="n">lidar_pc</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">sensor_to_vehicle</span><span class="p">(</span><span class="n">lidar_pc</span><span class="p">,</span> <span class="n">lidar</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">])</span>   
+            
+            <span class="c1">## filter points outside the image if in &#39;camera&#39; mode</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="o">==</span> <span class="s2">&quot;camera&quot;</span><span class="p">:</span>
+                <span class="n">cam</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;camera&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">cam_intrinsic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">][</span><span class="s1">&#39;camera_intrinsic&#39;</span><span class="p">])</span>
+                <span class="n">lidar_pc_cam</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">map_pointcloud_to_camera</span><span class="p">(</span><span class="n">lidar_pc</span><span class="p">,</span> 
+                                            <span class="n">cam_cs_record</span><span class="o">=</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">],</span>
+                                            <span class="n">cam_pose_record</span><span class="o">=</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;pose_record&#39;</span><span class="p">],</span>
+                                            <span class="n">pointsensor_pose_record</span><span class="o">=</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;lidar&#39;</span><span class="p">][</span><span class="s1">&#39;pose_record&#39;</span><span class="p">],</span>
+                                            <span class="n">coordinates</span><span class="o">=</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">map_pointcloud_to_image</span><span class="p">(</span><span class="n">lidar_pc_cam</span><span class="p">,</span> 
+                                                             <span class="n">cam_intrinsic</span><span class="p">,</span>
+                                                             <span class="n">img_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1600</span><span class="p">,</span><span class="mi">900</span><span class="p">))</span>               
+                <span class="n">lidar_pc</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="n">lidar_pc</span><span class="o">.</span><span class="n">points</span><span class="p">[:,</span><span class="n">mask</span><span class="p">]</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;lidar&#39;</span><span class="p">][</span><span class="s1">&#39;pointcloud&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lidar_pc</span>
+
+        <span class="c1">## Load Radar data in vehicle coordinates</span>
+        <span class="k">if</span> <span class="s1">&#39;radar&#39;</span> <span class="ow">in</span> <span class="n">frame</span><span class="p">:</span>
+            <span class="n">all_radar_pcs</span> <span class="o">=</span> <span class="n">RadarPointCloud</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">18</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">radar</span> <span class="ow">in</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">]:</span>
+                <span class="n">radar_pc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">RadarPointCloud</span><span class="o">.</span><span class="n">from_file_multisweep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                                        <span class="n">sample_record</span><span class="p">,</span> 
+                                                        <span class="n">radar</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">],</span> 
+                                                        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">REF_POSE_CHANNEL</span><span class="p">,</span> 
+                                                        <span class="n">nsweeps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">RADAR_SWEEPS</span><span class="p">,</span>
+                                                        <span class="n">min_distance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">PC_MIN_DIST</span><span class="p">)</span>
+                <span class="n">radar_pc</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">sensor_to_vehicle</span><span class="p">(</span><span class="n">radar_pc</span><span class="p">,</span> <span class="n">ref_cs_record</span><span class="p">)</span> 
+
+                <span class="c1">## filter points outside the image if in &#39;camera&#39; mode</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">SAMPLE_MODE</span> <span class="o">==</span> <span class="s2">&quot;camera&quot;</span><span class="p">:</span>
+                    <span class="n">cam</span> <span class="o">=</span> <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;camera&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">cam_intrinsic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">][</span><span class="s1">&#39;camera_intrinsic&#39;</span><span class="p">])</span>
+                    <span class="n">radar_pc_cam</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">map_pointcloud_to_camera</span><span class="p">(</span><span class="n">radar_pc</span><span class="p">,</span> 
+                                                <span class="n">cam_cs_record</span><span class="o">=</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;cs_record&#39;</span><span class="p">],</span>
+                                                <span class="n">cam_pose_record</span><span class="o">=</span><span class="n">cam</span><span class="p">[</span><span class="s1">&#39;pose_record&#39;</span><span class="p">],</span>
+                                                <span class="n">pointsensor_pose_record</span><span class="o">=</span><span class="n">ref_pose_record</span><span class="p">,</span>
+                                                <span class="n">coordinates</span><span class="o">=</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])</span>
+                    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">mask</span> <span class="o">=</span> <span class="n">nsutils</span><span class="o">.</span><span class="n">map_pointcloud_to_image</span><span class="p">(</span><span class="n">radar_pc_cam</span><span class="p">,</span> 
+                                                                <span class="n">cam_intrinsic</span><span class="p">,</span>
+                                                                <span class="n">img_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1600</span><span class="p">,</span><span class="mi">900</span><span class="p">))</span>               
+                    <span class="n">radar_pc</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="n">radar_pc</span><span class="o">.</span><span class="n">points</span><span class="p">[:,</span><span class="n">mask</span><span class="p">]</span>
+                
+                <span class="n">all_radar_pcs</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">all_radar_pcs</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">radar_pc</span><span class="o">.</span><span class="n">points</span><span class="p">))</span>
+
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">][</span><span class="s1">&#39;pointcloud&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_radar_pcs</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">][</span><span class="s1">&#39;pose_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_pose_record</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s1">&#39;radar&#39;</span><span class="p">][</span><span class="s1">&#39;cs_record&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_cs_record</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
+    <span class="c1">##--------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="NuscenesDataset.get_camera_data"><a class="viewcode-back" href="../../src/autodoc.html#pynuscenes.nuscenes_dataset.NuscenesDataset.get_camera_data">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_camera_data</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get camera image</span>
+
+<span class="sd">        :param filename (str): image file path</span>
+<span class="sd">        :return image (Image)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">image_str</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Camera image not found at </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">image_str</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">image</span></div></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">nusc_ds</span> <span class="o">=</span> <span class="n">NuscenesDataset</span><span class="p">(</span><span class="n">cfg</span><span class="o">=</span><span class="s1">&#39;config/cfg.yml&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">nusc_ds</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Landon Harris, Ramin Nabati.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

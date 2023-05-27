@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pynuscenes.utils.nuscenes_utils &mdash; pynuscenes 0.2 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/rtd_sphinx_search.min.css" type="text/css" />
+    <link rel="canonical" href="https://lharri73.github.io/pynuscenes/_modules/pynuscenes/utils/nuscenes_utils.html"/>
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/sphinx_highlight.js"></script>
+        <script src="../../../_static/js/rtd_search_config.js"></script>
+        <script src="../../../_static/js/rtd_sphinx_search.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pynuscenes
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../src/config.html">Configuration Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../src/usage.html">Usage and Format</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../src/autodoc.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pynuscenes</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pynuscenes.utils.nuscenes_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pynuscenes.utils.nuscenes_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">pyquaternion</span> <span class="kn">import</span> <span class="n">Quaternion</span>
+<span class="kn">from</span> <span class="nn">shapely.geometry</span> <span class="kn">import</span> <span class="n">LineString</span>
+<span class="kn">from</span> <span class="nn">nuscenes.utils.geometry_utils</span> <span class="kn">import</span> <span class="n">view_points</span><span class="p">,</span> <span class="n">box_in_image</span>
+<span class="kn">from</span> <span class="nn">nuscenes.utils</span> <span class="kn">import</span> <span class="n">splits</span>
+<span class="kn">from</span> <span class="nn">pynuscenes.utils</span> <span class="kn">import</span> <span class="n">constants</span> <span class="k">as</span> <span class="n">NS_C</span>
+<span class="kn">from</span> <span class="nn">nuscenes.utils.data_classes</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">LidarPointCloud</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">,</span> <span class="n">PointCloud</span>
+<span class="kn">from</span> <span class="nn">nuscenes.eval.detection.data_classes</span> <span class="kn">import</span> <span class="n">DetectionBox</span>
+
+
+<div class="viewcode-block" id="map_pointcloud_to_camera"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.map_pointcloud_to_camera">[docs]</a><span class="k">def</span> <span class="nf">map_pointcloud_to_camera</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">,</span> <span class="n">cam_pose_record</span><span class="p">,</span>
+                            <span class="n">pointsensor_pose_record</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coordinates</span><span class="o">=</span><span class="s1">&#39;vehicle&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Map the point cloud to camera coordinates.</span>
+<span class="sd">    </span>
+<span class="sd">    :param pc (PointCloud): point cloud in vehicle/global coordinates</span>
+<span class="sd">    :param cam_cs_record (dict): Camera calibrated sensor record</span>
+<span class="sd">    :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera</span>
+<span class="sd">    :param pointsensor_pose_record (dict): Ego vehicle pose record for the timestamp of the point sensor</span>
+<span class="sd">    :param coordinates (str): Point cloud coordinates (&#39;vehicle&#39;, &#39;global&#39;) </span>
+<span class="sd">    :return points (nparray), depth: Points in camera&#39;s coordinates</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    
+    <span class="c1">## Transform point cloud into the camera coordinates via global</span>
+    <span class="c1">## First step: transform to global frame if in vehicle frame</span>
+    <span class="k">if</span> <span class="n">coordinates</span> <span class="o">==</span> <span class="s1">&#39;vehicle&#39;</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">pointsensor_pose_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Erroe: pointsensor_pose_record is required.&#39;</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="n">vehicle_to_global</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">pointsensor_pose_record</span><span class="p">)</span>
+    
+    <span class="c1">## Second step: transform to ego vehicle frame for the timestamp of the image</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">global_to_vehicle</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">cam_pose_record</span><span class="p">)</span>
+    
+    <span class="c1">## Third step: transform into the camera.</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">vehicle_to_sensor</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">)</span>
+    
+    <span class="c1">## Grab the depths (camera frame z axis points away from the camera).</span>
+    <span class="n">depths</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">pc</span><span class="p">,</span> <span class="n">depths</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="map_pointcloud_to_image"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.map_pointcloud_to_image">[docs]</a><span class="k">def</span> <span class="nf">map_pointcloud_to_image</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">cam_intrinsic</span><span class="p">,</span> <span class="n">img_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1600</span><span class="p">,</span><span class="mi">900</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Map point cloud from camera coordinates to the image</span>
+<span class="sd">    </span>
+<span class="sd">    :param pc (PointCloud): point cloud in camera coordinates</span>
+<span class="sd">    :param cam_cs_record (dict): Camera calibrated sensor record</span>
+<span class="sd">    :param img_shape: shape of the image (width, height)</span>
+<span class="sd">    :param coordinates (str): Point cloud coordinates (&#39;vehicle&#39;, &#39;global&#39;) </span>
+<span class="sd">    :return points (nparray), depth, mask: Mapped and filtered points with depth and mask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">LidarPointCloud</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">):</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">points</span><span class="p">[:</span><span class="mi">3</span><span class="p">,:]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">pc</span>
+
+    <span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span> <span class="o">=</span> <span class="n">img_shape</span>
+    <span class="n">depths</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span>
+    
+    <span class="c1">## Take the actual picture</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">view_points</span><span class="p">(</span><span class="n">points</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cam_intrinsic</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1">## Remove points that are either outside or behind the camera. </span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">depths</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">depths</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">points</span><span class="p">[:,</span> <span class="n">mask</span><span class="p">]</span>
+    <span class="n">depths</span> <span class="o">=</span> <span class="n">depths</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">points</span><span class="p">,</span> <span class="n">depths</span><span class="p">,</span> <span class="n">mask</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="map_annotation_to_camera"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.map_annotation_to_camera">[docs]</a><span class="k">def</span> <span class="nf">map_annotation_to_camera</span><span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">,</span> <span class="n">cam_pose_record</span><span class="p">,</span>
+                            <span class="n">ref_pose_record</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coordinates</span><span class="o">=</span><span class="s1">&#39;vehicle&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given an annotation Box and camera information, map the box to the image.</span>
+<span class="sd">    </span>
+<span class="sd">    :param annotation (Box): annotation box in vehicle or global coordinates</span>
+<span class="sd">    :param cam_cs_record (dict): Camera calibrated sensor record</span>
+<span class="sd">    :param cam_pose_record (dict): Ego vehicle pose record for the timestamp of the camera</span>
+<span class="sd">    :param ref_pose_record (dict): reference pose record used for transforming </span>
+<span class="sd">        anns from global to vehicle coordinate system</span>
+<span class="sd">    :param coordinates (str): current point cloud coordinates (&#39;vehicle&#39;, &#39;global&#39;) </span>
+<span class="sd">    :return ann (Box): Mapped annotation box</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ann</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+    <span class="c1">## Transform ann into the camera coordinates via global</span>
+    <span class="c1">## First step: transform to global frame if in vehicle frame</span>
+    <span class="k">if</span> <span class="n">coordinates</span> <span class="o">==</span> <span class="s1">&#39;vehicle&#39;</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">ref_pose_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;Erroe: ref_pose_record is required.&#39;</span>
+        <span class="n">ann</span> <span class="o">=</span> <span class="n">vehicle_to_global</span><span class="p">(</span><span class="n">ann</span><span class="p">,</span> <span class="n">ref_pose_record</span><span class="p">)</span>
+    
+    <span class="c1">## Second step: transform to ego vehicle frame for the timestamp of the image</span>
+    <span class="n">ann</span> <span class="o">=</span> <span class="n">global_to_vehicle</span><span class="p">(</span><span class="n">ann</span><span class="p">,</span> <span class="n">cam_pose_record</span><span class="p">)</span>
+    
+    <span class="c1">## Third step: transform into the camera.</span>
+    <span class="n">ann</span> <span class="o">=</span> <span class="n">vehicle_to_sensor</span><span class="p">(</span><span class="n">ann</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ann</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="box_3d_to_2d_simple"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.box_3d_to_2d_simple">[docs]</a><span class="k">def</span> <span class="nf">box_3d_to_2d_simple</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">imsize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;xywh&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Projects 3D box into image FOV.</span>
+<span class="sd">        </span>
+<span class="sd">        :param box: 3D box in camera reference frame.</span>
+<span class="sd">        :param view: &lt;np.float: 3, 4&gt;. Projection matrix.</span>
+<span class="sd">        :param mode (str): 2D bbox fotmat: &#39;xywh&#39; or &#39;xyxy&#39;</span>
+<span class="sd">        :param imsize: (width, height). Image size.</span>
+<span class="sd">        :return bbox: Bounding box in image plane or None if box is not in the image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Create a new box.</span>
+        <span class="n">box</span> <span class="o">=</span> <span class="n">box</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Check that some corners are inside the image.</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">corner</span> <span class="k">for</span> <span class="n">corner</span> <span class="ow">in</span> <span class="n">box</span><span class="o">.</span><span class="n">corners</span><span class="p">()</span><span class="o">.</span><span class="n">T</span> <span class="k">if</span> <span class="n">corner</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">corners</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Project corners that are in front of the camera to 2d to get bbox in pixel coords.</span>
+        <span class="n">imcorners</span> <span class="o">=</span> <span class="n">view_points</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">view</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">imcorners</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">imcorners</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">imcorners</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">imcorners</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="c1"># Crop bbox to prevent it extending outside image.</span>
+        <span class="n">bbox_crop</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bbox</span><span class="p">)</span>
+        <span class="n">bbox_crop</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">imsize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                     <span class="nb">min</span><span class="p">(</span><span class="n">imsize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                     <span class="nb">min</span><span class="p">(</span><span class="n">imsize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+                     <span class="nb">min</span><span class="p">(</span><span class="n">imsize</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+
+        <span class="c1"># Detect if a cropped box is empty.</span>
+        <span class="c1"># if bbox_crop[0] &gt;= bbox_crop[2] or bbox_crop[1] &gt;= bbox_crop[3]:</span>
+        <span class="k">if</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;xywh&#39;</span><span class="p">:</span>
+            <span class="n">bbox_crop</span> <span class="o">=</span> <span class="p">[</span><span class="n">bbox_crop</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bbox_crop</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> 
+                         <span class="nb">abs</span><span class="p">(</span><span class="n">bbox_crop</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">bbox_crop</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> 
+                         <span class="nb">abs</span><span class="p">(</span><span class="n">bbox_crop</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">-</span><span class="n">bbox_crop</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">bbox_crop</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<span class="c1"># def box_3d_to_2d(box, view, imsize, mode=&#39;xywh&#39;):</span>
+<span class="c1">#     &quot;&quot;&quot; # TODO: currently not working properly</span>
+<span class="c1">#     Convert a 3d annotation box to its 2D bounding box equivalent</span>
+
+<span class="c1">#     :param box (Box): Annotation box in camera coordinate system</span>
+<span class="c1">#     :param view (nparray): Camera intrinsics matrix</span>
+<span class="c1">#     :param imsize (width, height): Image size in pixels</span>
+<span class="c1">#     :param wlh_factor (float): Multiply w, l, h by a factor to inflate or deflate the box.</span>
+<span class="c1">#     :return bbox (nparray): 2D bounding box (xywh or xyxy)</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     corners_3d = box.corners()</span>
+<span class="c1">#     corners_img = view_points(corners_3d, view, normalize=True)[:2,:]</span>
+
+<span class="c1">#     # Find corners that are outside image boundaries</span>
+<span class="c1">#     invisible = np.logical_or(corners_img[0, :] &lt; 0, corners_img[0, :] &gt; imsize[0])</span>
+<span class="c1">#     invisible = np.logical_or(invisible, corners_img[1, :] &gt; imsize[1])</span>
+<span class="c1">#     invisible = np.logical_or(invisible, corners_img[1, :] &lt; 0)</span>
+<span class="c1">#     ind_invisible = [i for i, x in enumerate(invisible) if x]</span>
+<span class="c1">#     corner_2d_visible = np.delete(corners_img, ind_invisible, 1)</span>
+    
+<span class="c1">#     neighbor_map = {0: [1,3,4], 1: [0,2,5], 2: [1,3,6], 3: [0,2,7],</span>
+<span class="c1">#                     4: [0,5,7], 5: [1,4,6], 6: [2,5,7], 7: [3,4,6]}</span>
+<span class="c1">#     border_lines = [[(0,imsize[1]),(0,0)],</span>
+<span class="c1">#                     [(imsize[0],0),(imsize[0],imsize[1])],</span>
+<span class="c1">#                     [(imsize[0],imsize[1]),(0,imsize[1])],</span>
+<span class="c1">#                     [(0,0),(imsize[0],0)]]</span>
+
+<span class="c1">#     # Find intersections with boundary lines</span>
+<span class="c1">#     for ind in ind_invisible:</span>
+<span class="c1">#         # intersections = []</span>
+<span class="c1">#         invis_point = (corners_img[0, ind], corners_img[1, ind])</span>
+<span class="c1">#         for i in neighbor_map[ind]:</span>
+<span class="c1">#             if i in ind_invisible:</span>
+<span class="c1">#                 # Both corners outside image boundaries, ignore them</span>
+<span class="c1">#                 continue</span>
+
+<span class="c1">#             nbr_point = (corners_img[0,i], corners_img[1,i])</span>
+<span class="c1">#             line = LineString([invis_point, nbr_point])</span>
+<span class="c1">#             for borderline in border_lines:</span>
+<span class="c1">#                 intsc = line.intersection(LineString(borderline))</span>
+<span class="c1">#                 if not intsc.is_empty:</span>
+<span class="c1">#                     corner_2d_visible = np.append(corner_2d_visible, np.asarray([[intsc.x],[intsc.y]]), 1)</span>
+<span class="c1">#                     break</span>
+
+<span class="c1">#     # Construct a 2D box covering the whole object</span>
+<span class="c1">#     x_min, y_min = np.amin(corner_2d_visible, 1)</span>
+<span class="c1">#     x_max, y_max = np.amax(corner_2d_visible, 1)</span>
+
+<span class="c1">#     # Get the box corners</span>
+<span class="c1">#     # corners_img = np.array([[x_max, x_max, x_min, x_min],</span>
+<span class="c1">#     #                     [y_max, y_min, y_min, y_max]])</span>
+
+<span class="c1">#     # Convert to the MS COCO bbox format</span>
+<span class="c1">#     # bbox = [corners_img[0,3], corners_img[1,3],</span>
+<span class="c1">#     #         corners_img[0,0]-corners_img[0,3],corners_img[1,1]-corners_img[1,0]]</span>
+<span class="c1">#     if mode == &#39;xyxy&#39;:</span>
+<span class="c1">#         bbox = [x_min, y_min, x_max, y_max]</span>
+<span class="c1">#     elif mode == &#39;xywh&#39;:</span>
+<span class="c1">#         bbox = [x_min, y_min, abs(x_max-x_min), abs(y_max-y_min)]</span>
+<span class="c1">#     else: </span>
+<span class="c1">#         raise Exception(&quot;mode of &#39;{}&#39; is not supported&quot;.format(mode))</span>
+
+<span class="c1">#     return bbox</span>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="boxes_in_image"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.boxes_in_image">[docs]</a><span class="k">def</span> <span class="nf">boxes_in_image</span><span class="p">(</span><span class="n">boxes</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">,</span> <span class="n">img_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1600</span><span class="p">,</span><span class="mi">900</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if list of annotations are inside an image</span>
+
+<span class="sd">    :param boxes: annotation boxes in camera coordinates</span>
+<span class="sd">    :param cam_cs_record: calibrated sensor record of the camera</span>
+<span class="sd">    :param img_shape: shape of the image (width, height)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Box</span><span class="p">)</span>
+    <span class="n">camera_intrinsic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cam_cs_record</span><span class="p">[</span><span class="s1">&#39;camera_intrinsic&#39;</span><span class="p">])</span>
+    <span class="n">visible_boxes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">box</span> <span class="ow">in</span> <span class="n">boxes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">box_in_image</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">camera_intrinsic</span><span class="p">,</span> <span class="n">img_shape</span><span class="p">):</span>
+            <span class="n">visible_boxes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">box</span><span class="p">)</span>
+            <span class="n">mask</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">visible_boxes</span><span class="p">,</span> <span class="n">mask</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="split_scenes"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.split_scenes">[docs]</a><span class="k">def</span> <span class="nf">split_scenes</span><span class="p">(</span><span class="n">scenes</span><span class="p">,</span> <span class="n">split</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the list of scenes in a split</span>
+<span class="sd">    </span>
+<span class="sd">    :param scenes (list): list of all scenes from nuscene</span>
+<span class="sd">    :param split (str): split name</span>
+<span class="sd">    :return scene_list(list): list of scene tokens in the split</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">scene_split_names</span> <span class="o">=</span> <span class="n">splits</span><span class="o">.</span><span class="n">create_splits_scenes</span><span class="p">()[</span><span class="n">split</span><span class="p">]</span>
+    <span class="n">scenes_list</span> <span class="o">=</span> <span class="p">[]</span>        
+    <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="n">scenes</span><span class="p">:</span>
+        <span class="c1">#NOTE: mini train and mini val are subsets of train and val</span>
+        <span class="k">if</span> <span class="n">scene</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">scene_split_names</span><span class="p">:</span>
+            <span class="n">scenes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scene</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">scenes_list</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="global_to_vehicle"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.global_to_vehicle">[docs]</a><span class="k">def</span> <span class="nf">global_to_vehicle</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pose_record</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform points/boxes from global to vehicle coordinates</span>
+
+<span class="sd">    :param obj: An object of PointCloud or Box class</span>
+<span class="sd">    :param pose_record (dict): Vehicle ego-pose dictionary</span>
+<span class="sd">    :return obj: Object in the vehicle coordinate system</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>    
+    <span class="n">translation_matrix</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">PointCloud</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="o">.</span><span class="n">T</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">inverse</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">DetectionBox</span><span class="p">):</span>
+        <span class="n">quat</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">inverse</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">+=</span> <span class="n">translation_matrix</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">translation</span><span class="p">))</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span> <span class="o">=</span> <span class="n">quat</span> <span class="o">*</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">]))</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">translation</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">velTmp</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span> <span class="o">=</span> <span class="p">[</span><span class="n">velTmp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">velTmp</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="k">return</span> <span class="n">obj</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Input must be a PointCloud or Box object. got </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)))</span>
+    
+    <span class="c1">## TODO: check for correctness then uncomment</span>
+<span class="c1">#     elif isinstance(pc, np.ndarray):</span>
+<span class="c1">#         ## Transform from global to vehicle</span>
+<span class="c1">#         for i in range(3):</span>
+<span class="c1">#             pc[i, :] = pc[i, :] + np.array(-np.array(ego_pose[&#39;translation&#39;]))[i]</span>
+<span class="c1">#         pc[:3, :] = np.dot(Quaternion(ego_pose[&#39;rotation&#39;]).rotation_matrix.T, pc[:3, :])</span>
+
+    <span class="c1">## Apply the transforms</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation_matrix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">):</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:])</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">velocity</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))))</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)[:</span><span class="mi">2</span><span class="p">,:]</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">obj</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="vehicle_to_global"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.vehicle_to_global">[docs]</a><span class="k">def</span> <span class="nf">vehicle_to_global</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pose_record</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform points/boxes from vehicle to global coordinates</span>
+
+<span class="sd">    :param obj: An object of PointCloud or Box class</span>
+<span class="sd">    :param pose_record (dict): Vehicle ego-pose dictionary</span>
+<span class="sd">    :return obj: Object in the global coordinate system</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">translation_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">])</span>
+    
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">PointCloud</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rotation_matrix</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">DetectionBox</span><span class="p">):</span>
+        <span class="n">quat</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">translation</span><span class="p">))</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span> <span class="o">=</span> <span class="n">quat</span> <span class="o">*</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">]))</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">+=</span> <span class="n">translation_matrix</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">translation</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">translation</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">rotation</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">velTmp</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">velocity</span> <span class="o">=</span> <span class="p">[</span><span class="n">velTmp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">velTmp</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="k">return</span> <span class="n">obj</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Input must be a PointCloud or Box object. got </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)))</span>
+    
+    <span class="c1">## Apply the transforms</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">):</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:])</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">velocity</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))))</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)[:</span><span class="mi">2</span><span class="p">,:]</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation_matrix</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">obj</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="vehicle_to_sensor"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.vehicle_to_sensor">[docs]</a><span class="k">def</span> <span class="nf">vehicle_to_sensor</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cs_record</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform points/boxes from vehicle to sensor coordinates</span>
+
+<span class="sd">    :param obj: An object of PointCloud or Box class</span>
+<span class="sd">    :param cs_record (dict): Calibrated sensor record dictionary</span>
+<span class="sd">    :return obj: Object in the sensor coordinate system</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">translation_matrix</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">PointCloud</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="o">.</span><span class="n">T</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">inverse</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Input must be a PointCloud or Box object&#39;</span><span class="p">)</span>
+        
+    <span class="c1">## TODO: check for correctness then uncomment</span>
+<span class="c1">#     elif isinstance(pc, np.ndarray):</span>
+<span class="c1">#         for i in range(3):</span>
+<span class="c1">#             pc[i, :] = pc[i, :] - np.array(cs_record[&#39;translation&#39;])[i]</span>
+<span class="c1">#         pc[:3, :] = np.dot(Quaternion(cs_record[&#39;rotation&#39;]).rotation_matrix.T, pc[:3, :])</span>
+
+    <span class="c1">## Apply the transforms</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation_matrix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">):</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:])</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">velocity</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))))</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)[:</span><span class="mi">2</span><span class="p">,:]</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">obj</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="sensor_to_vehicle"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.sensor_to_vehicle">[docs]</a><span class="k">def</span> <span class="nf">sensor_to_vehicle</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cs_record</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform points/boxes from sensor to vehicle coordinates</span>
+
+<span class="sd">    :param obj: An object of PointCloud or Box class</span>
+<span class="sd">    :param cs_record (dict): Calibrated sensor record dictionary</span>
+<span class="sd">    :return obj: Object in the vehicle coordinate system</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">translation_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">PointCloud</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">rotation_matrix</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+        <span class="n">rotation_matrix</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">cs_record</span><span class="p">[</span><span class="s1">&#39;rotation&#39;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Input must be a PointCloud or Box object&#39;</span><span class="p">)</span>
+
+    <span class="c1">## Apply the transforms</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">RadarPointCloud</span><span class="p">):</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:])</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">velocity</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))))</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)[:</span><span class="mi">2</span><span class="p">,:]</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation_matrix</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">obj</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="get_box_dist"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.get_box_dist">[docs]</a><span class="k">def</span> <span class="nf">get_box_dist</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">pose_record</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the cylindrical (xy) center distance from ego vehicle to each box.</span>
+<span class="sd">        </span>
+<span class="sd">        :param box (Box): The NuScenes annotation box in global coordinates</span>
+<span class="sd">        :param pose_record: Ego pose record from the LIDAR</span>
+<span class="sd">        :return: distance (in meters)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Both boxes and ego pose are given in global coord system, so distance </span>
+        <span class="c1"># can be calculated directly. Note that the z component of the ego pose is 0.</span>
+        <span class="n">ego_translation</span> <span class="o">=</span> <span class="p">(</span><span class="n">box</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                           <span class="n">box</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                           <span class="n">box</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">pose_record</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">ego_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ego_translation</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="n">ego_dist</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="bbox_to_corners"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.bbox_to_corners">[docs]</a><span class="k">def</span> <span class="nf">bbox_to_corners</span><span class="p">(</span><span class="n">bboxes</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; # TODO: check compatibility</span>
+<span class="sd">    Convert 3D bounding boxes in [x,y,z,w,l,h,ry] format to [x,y,z] coordinates</span>
+<span class="sd">    of the corners</span>
+<span class="sd">    </span>
+<span class="sd">    :param bboxes: input boxes np.ndarray &lt;N,7&gt;</span>
+<span class="sd">    :return corners: np.ndarray &lt;N,3,8&gt; where x,y,z is along each column</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">3</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">4</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span><span class="mi">5</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">yaw_angle</span> <span class="o">=</span> <span class="n">bboxes</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span>
+
+    <span class="c1"># 3D bounding box corners. (Convention: x points forward, y to the left, z up.)</span>
+    <span class="n">x_corners</span> <span class="o">=</span> <span class="p">(</span><span class="n">l</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">y_corners</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">])</span>
+    <span class="n">z_corners</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">((</span><span class="n">x_corners</span><span class="p">,</span> <span class="n">y_corners</span><span class="p">,</span> <span class="n">z_corners</span><span class="p">))</span>
+    <span class="c1"># Rotate</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">box</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">corners</span><span class="p">):</span>
+        <span class="n">rotation_quat</span> <span class="o">=</span> <span class="n">Quaternion</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">angle</span><span class="o">=</span><span class="n">yaw_angle</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">corners</span><span class="p">[</span><span class="n">i</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation_quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">box</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># Translate</span>
+    <span class="n">corners</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">x</span>
+    <span class="n">corners</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">y</span>
+    <span class="n">corners</span><span class="p">[:,:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">z</span>
+
+    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">corners</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="corners3d_to_image"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.corners3d_to_image">[docs]</a><span class="k">def</span> <span class="nf">corners3d_to_image</span><span class="p">(</span><span class="n">corners</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">,</span> <span class="n">img_shape</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the 2D box corners mapped to the image plane.</span>
+
+<span class="sd">    :param corners: (np.array &lt;N, 3, 8&gt;)</span>
+<span class="sd">    :param cam_cs_record: (dict) calibrated sensor record of a camera dictionary from nuscenes dataset</span>
+<span class="sd">    :param img_shape: (tuple&lt;width, height&gt;)</span>
+<span class="sd">    :return corners: (ndarray&lt;N,2,8&gt;, list&lt;N&gt;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cornerList</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">box_corners</span> <span class="ow">in</span> <span class="n">corners</span><span class="p">:</span>
+        <span class="n">box_corners</span> <span class="o">=</span> <span class="n">pc_to_sensor</span><span class="p">(</span><span class="n">box_corners</span><span class="p">,</span> <span class="n">cam_cs_record</span><span class="p">)</span>
+        <span class="n">this_box_corners</span> <span class="o">=</span> <span class="n">view_points</span><span class="p">(</span><span class="n">box_corners</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cam_cs_record</span><span class="p">[</span><span class="s1">&#39;camera_intrinsic&#39;</span><span class="p">]),</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span>
+        
+        <span class="n">visible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">this_box_corners</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">this_box_corners</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">visible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">visible</span><span class="p">,</span> <span class="n">this_box_corners</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">visible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">visible</span><span class="p">,</span> <span class="n">this_box_corners</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">visible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">visible</span><span class="p">,</span> <span class="n">box_corners</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">in_front</span> <span class="o">=</span> <span class="n">box_corners</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mf">0.1</span>  <span class="c1"># True if a corner is at least 0.1 meter in front of the camera.</span>
+        <span class="n">isVisible</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">visible</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">in_front</span><span class="p">)</span>
+        <span class="n">mask</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">isVisible</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isVisible</span><span class="p">:</span>
+            <span class="n">cornerList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">this_box_corners</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cornerList</span><span class="p">),</span> <span class="n">mask</span></div>
+<span class="c1">##------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="quaternion_to_ry"><a class="viewcode-back" href="../../../src/autodoc.html#pynuscenes.utils.nuscenes_utils.quaternion_to_ry">[docs]</a><span class="k">def</span> <span class="nf">quaternion_to_ry</span><span class="p">(</span><span class="n">quat</span><span class="p">:</span> <span class="n">Quaternion</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the yaw angle from a quaternion.</span>
+
+<span class="sd">    :param quat: (Quaternion)</span>
+<span class="sd">    :return angle: yaw angle in radians (float)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">quat</span><span class="o">.</span><span class="n">rotation_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">yaw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">yaw</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Landon Harris, Ramin Nabati.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
