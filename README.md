@@ -15,10 +15,6 @@ provides APIs for loading sensor data in different coordinate systems.
 ### Requirements
 - Linux or macOS
 - Python>= 3.6
-- numpy<=1.20.3
-  - Note: this is enforced by pip during installation of this package
-  - There is a bug in the evaluation code of NuScenes devkit that requires numpy<=1.20.3. You can try other version of 
-    numpy, but you may encounter some errors. (this is during evaluation only)
 
 ### Build pynuscenes
 After having the above dependencies, run:
